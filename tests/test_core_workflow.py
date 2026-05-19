@@ -123,6 +123,13 @@ class CoreWorkflowTests(unittest.TestCase):
         grounding_value = db.executed_parameters[0][-1]
         self.assertIs(grounding_value, True)
 
+    def test_jsonb_fields_already_decoded_are_preserved(self):
+        from account_intel.db import Database
+
+        draft = Database._decode_draft({"evidence_refs": ["finding_1", "finding_2"]})
+
+        self.assertEqual(draft["evidence_refs"], ["finding_1", "finding_2"])
+
 
 if __name__ == "__main__":
     unittest.main()

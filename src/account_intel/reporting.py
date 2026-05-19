@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
-from account_intel.db import Database
+from account_intel.db import Database, decode_json_value
 
 
 def build_run_report(db: Database, run_id: str) -> dict[str, Any]:
@@ -38,7 +37,7 @@ def build_run_report(db: Database, run_id: str) -> dict[str, Any]:
     drafts = []
     for row in draft_rows:
         draft = dict(row)
-        draft["evidence_refs"] = json.loads(draft["evidence_refs"])
+        draft["evidence_refs"] = decode_json_value(draft["evidence_refs"])
         drafts.append(draft)
 
     return {

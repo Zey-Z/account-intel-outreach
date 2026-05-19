@@ -31,6 +31,12 @@ def now_iso() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
+def decode_json_value(value: Any) -> Any:
+    if isinstance(value, str):
+        return json.loads(value)
+    return value
+
+
 class Database:
     def __init__(self, url: str):
         self.url = url
@@ -237,6 +243,11 @@ class Database:
                 raise KeyError(run_id)
             return dict(row)
 
+    def latest_run_id(self) -> str | None:
+        with self.connect() as conn:
+            row = conn.execute("SELECT run_id FROM runs ORDER BY started_at DESC LIMIT 1").fetchone()
+            return str(row["run_id"]) if row else None
+
     def next_queued_run(self) -> dict[str, Any] | None:
         with self.connect() as conn:
             row = conn.execute(
@@ -423,12 +434,12 @@ class Database:
             ).fetchall()
             events = [dict(row) for row in rows]
             for event in events:
-                event["payload"] = json.loads(event["payload"])
+                event["payload"] = decode_json_value(event["payload"])
             return events
 
     @staticmethod
     def _decode_draft(draft: dict[str, Any]) -> dict[str, Any]:
-        draft["evidence_refs"] = json.loads(draft["evidence_refs"])
+        draft["evidence_refs"] = decode_json_value(draft["evidence_refs"])
         return draft
 
 

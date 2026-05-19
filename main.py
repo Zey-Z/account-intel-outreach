@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from account_intel.db import Database
+from account_intel.reporting import build_run_report
 from account_intel.worker import Worker
 
 
@@ -47,6 +48,14 @@ try:
             companies=companies,
         )
         return {"run_id": run_id, "status": "queued"}
+
+    @app.get("/runs/latest")
+    async def get_latest_run() -> dict[str, Any]:
+        db = get_db()
+        run_id = db.latest_run_id()
+        if not run_id:
+            raise HTTPException(status_code=404, detail="No runs found.")
+        return build_run_report(db, run_id)
 
     @app.get("/runs/{run_id}")
     async def get_run(run_id: str) -> dict[str, Any]:
