@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: account-intel-outreach-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: ICP_PROFILES_PATH
+        value: icp_profiles.yaml
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: SLACK_BOT_TOKEN
+        sync: false
+      - key: SLACK_SIGNING_SECRET
+        sync: false
+      - key: HUBSPOT_PRIVATE_APP_TOKEN
+        sync: false

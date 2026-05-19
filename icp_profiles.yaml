@@ -1,0 +1,65 @@
+profiles:
+  healthcare_insurance_ops:
+    name: Healthcare / Insurance Operations Buyers
+    description: >
+      Healthcare, insurance, payer, benefits, and healthtech operations teams
+      with manual document review, claims, prior authorization, member support,
+      broker, provider-network, or compliance-heavy workflow pain.
+    target_segments:
+      - health insurance administrators
+      - payer operations teams
+      - benefits platforms
+      - healthtech operations teams
+      - revenue cycle and claims operations teams
+    pain_points:
+      - claims review backlog
+      - prior authorization friction
+      - provider network data cleanup
+      - manual document intake
+      - member support triage
+      - compliance-heavy approval workflows
+    buying_signals:
+      - hiring for operations or customer support roles
+      - launching payer, provider, or benefits workflow products
+      - publishing process automation or AI transformation initiatives
+      - discussing claims, reimbursement, eligibility, or provider data
+    disqualifiers:
+      - direct patient diagnosis workflow
+      - PHI-heavy use case without compliance approval
+      - consumer wellness content with no operations workflow
+    approved_outreach_angles:
+      - AI-assisted exception triage with human approval
+      - source-grounded document intake and summary
+      - operations queue prioritization
+      - audit-friendly workflow automation
+    risk_notes:
+      - Do not claim HIPAA compliance.
+      - Do not request or process patient data.
+      - Keep examples limited to public company information.
+  ai_workflow_automation_buyers:
+    name: AI Workflow Automation Buyers
+    description: Teams likely to benefit from LLM workflow automation, routing, and documentation.
+    target_segments: [startup operations, RevOps, CX operations, product operations]
+    pain_points: [manual intake, repetitive routing, slow handoffs, inconsistent documentation]
+    buying_signals: [AI adoption initiatives, operations hiring, tool sprawl, manual support queues]
+    disqualifiers: [pure research labs, deep infrastructure teams]
+    approved_outreach_angles: [workflow intake automation, human-approved AI triage, reporting-ready process logs]
+    risk_notes: [Avoid overclaiming savings without measured data.]
+  logistics_freight_ops:
+    name: Logistics / Freight Operations Buyers
+    description: Freight, logistics, audit, and transportation spend teams with document-heavy operations.
+    target_segments: [freight audit teams, 3PL operations, transportation spend platforms]
+    pain_points: [invoice exceptions, carrier document review, shipment status follow-up]
+    buying_signals: [freight audit content, operations scale, exception management hiring]
+    disqualifiers: [asset-only carriers with no software or ops platform signal]
+    approved_outreach_angles: [freight invoice exception triage, carrier document workflow support]
+    risk_notes: [Use synthetic examples for invoice data.]
+  edtech_student_services:
+    name: EdTech / Student Services Buyers
+    description: Education services teams with student support, counseling, and document intake workflows.
+    target_segments: [college counseling platforms, student support operations, admissions services]
+    pain_points: [student intake, essay support workflows, counselor handoff, progress tracking]
+    buying_signals: [international student services, admissions counseling, AI student support]
+    disqualifiers: [pure content publishers with no service workflow]
+    approved_outreach_angles: [student intake workflow support, counselor-ready AI summaries]
+    risk_notes: [Do not generate essays or claim admissions outcomes.]

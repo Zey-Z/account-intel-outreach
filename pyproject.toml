@@ -1,0 +1,18 @@
+[project]
+name = "account-intel-outreach"
+version = "0.1.0"
+description = "Human-approved AI account intelligence and outreach ops workflow."
+requires-python = ">=3.12"
+dependencies = [
+  "PyYAML>=6.0.3",
+  "fastapi>=0.115.0",
+  "uvicorn>=0.30.0",
+  "python-multipart>=0.0.9",
+  "psycopg2-binary>=2.9.10",
+  "crewai>=0.100.0",
+  "crewai-tools>=0.32.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

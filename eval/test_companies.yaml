@@ -1,0 +1,19 @@
+companies:
+  - name: Northstar Health
+    domain: northstar.example
+    expected:
+      min_fit_score: 60
+      must_route_to: sent_to_review
+      required_terms: [claims, payer, operations]
+  - name: PayerOps Cloud
+    domain: payerops.example
+    expected:
+      min_fit_score: 60
+      must_route_to: sent_to_review
+      required_terms: [support, workflow, operations]
+  - name: BenefitsFlow Analytics
+    domain: benefitsflow.example
+    expected:
+      min_fit_score: 60
+      must_route_to: sent_to_review
+      required_terms: [claims, support, workflow]
