@@ -282,7 +282,7 @@ class Database:
                         finding["source_url"],
                         finding["source_type"],
                         finding["retrieved_at"],
-                        1 if finding["grounding_passed"] else 0,
+                        bool(finding["grounding_passed"]) if self.backend == "postgres" else 1 if finding["grounding_passed"] else 0,
                     ),
                 )
         return ids

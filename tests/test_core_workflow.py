@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from contextlib import contextmanager
 from pathlib import Path
 
 
@@ -89,6 +90,38 @@ class CoreWorkflowTests(unittest.TestCase):
         db = Database("postgresql://user:pass@example.neon.tech/neondb?sslmode=require")
 
         self.assertEqual(db.backend, "postgres")
+
+    def test_postgres_research_finding_uses_boolean_grounding_value(self):
+        from account_intel.db import Database
+
+        class FakePostgresDatabase(Database):
+            def __init__(self):
+                self.backend = "postgres"
+                self.executed_parameters = []
+
+            @contextmanager
+            def connect(self):
+                yield self
+
+            def execute(self, _sql, parameters=()):
+                self.executed_parameters.append(parameters)
+
+        db = FakePostgresDatabase()
+        db.save_research_findings(
+            "company_1",
+            [
+                {
+                    "claim": "Oscar Health supports payer operations workflows.",
+                    "source_url": "https://example.com/oscar",
+                    "source_type": "company_website",
+                    "retrieved_at": "2026-05-19T00:00:00Z",
+                    "grounding_passed": True,
+                }
+            ],
+        )
+
+        grounding_value = db.executed_parameters[0][-1]
+        self.assertIs(grounding_value, True)
 
 
 if __name__ == "__main__":
