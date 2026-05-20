@@ -33,6 +33,25 @@ $env:PYTHONPATH="C:\Users\jinze\projects\account-intel-outreach\src"
 python -m unittest discover -s tests -v
 ```
 
+## Zapier Entry Security
+
+Public workflow endpoints are protected by an optional API key. Set
+`ACCOUNT_INTEL_API_KEY` in Render before connecting Zapier. When this value is
+set, Zapier must send this header on every API call:
+
+```text
+X-API-Key: your-secret-value
+```
+
+Protected endpoints:
+
+- `POST /runs`
+- `GET /runs/latest`
+- `GET /runs/{run_id}`
+- `POST /worker/process-next`
+
+`GET /health` stays public so Render can check whether the service is alive.
+
 ## Current Implementation Status
 
 Implemented:

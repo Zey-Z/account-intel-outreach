@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hmac
 import os
 import sys
 from pathlib import Path
@@ -16,6 +17,7 @@ from account_intel.worker import Worker
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/account_intel.db")
 ICP_PATH = Path(os.getenv("ICP_PROFILES_PATH", "icp_profiles.yaml"))
+API_KEY = os.getenv("ACCOUNT_INTEL_API_KEY", "")
 
 
 def get_db() -> Database:
@@ -30,12 +32,19 @@ try:
 
     app = FastAPI(title="AI Account Intelligence & Outreach Ops System")
 
+    def require_api_key(x_api_key: str | None) -> None:
+        if not API_KEY:
+            return
+        if not isinstance(x_api_key, str) or not hmac.compare_digest(x_api_key, API_KEY):
+            raise HTTPException(status_code=401, detail="Invalid or missing API key.")
+
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
     @app.post("/runs", status_code=202)
-    async def create_run(payload: dict[str, Any]) -> dict[str, Any]:
+    async def create_run(payload: dict[str, Any], x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+        require_api_key(x_api_key)
         companies = payload.get("companies")
         if not companies and payload.get("company_name"):
             companies = [{"name": payload["company_name"], "domain": payload.get("domain")}]
@@ -50,7 +59,8 @@ try:
         return {"run_id": run_id, "status": "queued"}
 
     @app.get("/runs/latest")
-    async def get_latest_run() -> dict[str, Any]:
+    async def get_latest_run(x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+        require_api_key(x_api_key)
         db = get_db()
         run_id = db.latest_run_id()
         if not run_id:
@@ -58,12 +68,14 @@ try:
         return build_run_report(db, run_id)
 
     @app.get("/runs/{run_id}")
-    async def get_run(run_id: str) -> dict[str, Any]:
+    async def get_run(run_id: str, x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+        require_api_key(x_api_key)
         db = get_db()
         return {"run": db.get_run(run_id), "events": db.list_events(run_id)}
 
     @app.post("/worker/process-next")
-    async def process_next() -> dict[str, Any]:
+    async def process_next(x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+        require_api_key(x_api_key)
         db = get_db()
         worker = Worker(db=db, icp_path=ICP_PATH)
         run_id = worker.process_next()

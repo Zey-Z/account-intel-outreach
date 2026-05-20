@@ -10,6 +10,8 @@ services:
         sync: false
       - key: ICP_PROFILES_PATH
         value: icp_profiles.yaml
+      - key: ACCOUNT_INTEL_API_KEY
+        sync: false
       - key: TAVILY_API_KEY
         sync: false
       - key: SLACK_BOT_TOKEN
