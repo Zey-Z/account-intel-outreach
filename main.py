@@ -77,6 +77,20 @@ try:
         db = get_db()
         return {"run": db.get_run(run_id), "events": db.list_events(run_id)}
 
+    @app.get("/runtime/status")
+    async def runtime_status(x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+        from account_intel.crewai_runtime import crewai_dependency_available
+
+        require_api_key(x_api_key)
+        return {
+            "agent_runtime": os.getenv("AGENT_RUNTIME", "deterministic"),
+            "research_mode": os.getenv("RESEARCH_MODE", "offline"),
+            "crewai_dependency_available": crewai_dependency_available(),
+            "openai_api_key_configured": bool(os.getenv("OPENAI_API_KEY")),
+            "tavily_api_key_configured": bool(os.getenv("TAVILY_API_KEY")),
+            "render_git_commit": os.getenv("RENDER_GIT_COMMIT", ""),
+        }
+
     @app.post("/worker/process-next")
     async def process_next(x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
         require_api_key(x_api_key)

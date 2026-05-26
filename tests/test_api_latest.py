@@ -80,6 +80,28 @@ class ApiLatestRunTests(unittest.TestCase):
 
         self.assertEqual(caught.exception.status_code, 401)
 
+    def test_runtime_status_reports_safe_runtime_configuration(self):
+        main.API_KEY = "test-secret"
+
+        with patch.dict(
+            os.environ,
+            {
+                "AGENT_RUNTIME": "crewai",
+                "RESEARCH_MODE": "tavily",
+                "OPENAI_API_KEY": "test-openai-key",
+                "TAVILY_API_KEY": "test-tavily-key",
+                "RENDER_GIT_COMMIT": "abc123",
+            },
+        ):
+            response = asyncio.run(main.runtime_status(x_api_key="test-secret"))
+
+        self.assertEqual(response["agent_runtime"], "crewai")
+        self.assertEqual(response["research_mode"], "tavily")
+        self.assertTrue(response["openai_api_key_configured"])
+        self.assertTrue(response["tavily_api_key_configured"])
+        self.assertEqual(response["render_git_commit"], "abc123")
+        self.assertNotIn("test-openai-key", str(response))
+
     def test_worker_endpoint_rejects_missing_api_key_when_configured(self):
         main.API_KEY = "test-secret"
 
