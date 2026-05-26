@@ -20,10 +20,17 @@
 ## Slack
 
 1. Create a Slack app.
-2. Enable interactivity.
-3. Set Request URL to `https://<render-url>/slack/interactions`.
-4. Copy signing secret into `SLACK_SIGNING_SECRET`.
-5. Use `build_review_message` from `account_intel.integrations.slack` to format messages.
+2. Enable Incoming Webhooks and add the webhook to the review channel.
+3. Copy the webhook URL into `SLACK_WEBHOOK_URL`.
+4. Enable interactivity.
+5. Set Request URL to `https://<render-url>/slack/interactions`.
+6. Copy signing secret into `SLACK_SIGNING_SECRET`.
+7. Send a review message from the same Render environment that will handle button clicks:
+
+```text
+POST https://<render-url>/slack/send-latest-review
+Header: X-API-Key: <ACCOUNT_INTEL_API_KEY>
+```
 
 ## HubSpot
 

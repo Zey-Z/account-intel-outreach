@@ -4,10 +4,12 @@ import os
 from pathlib import Path
 
 from account_intel.db import Database
+from account_intel.env import load_local_env
 from account_intel.worker import Worker
 
 
 def main() -> None:
+    load_local_env()
     db = Database(os.getenv("DATABASE_URL", "sqlite:///data/account_intel.db"))
     db.initialize()
     worker = Worker(db=db, icp_path=Path(os.getenv("ICP_PROFILES_PATH", "icp_profiles.yaml")))

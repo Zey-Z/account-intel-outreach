@@ -11,9 +11,12 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from account_intel.db import Database
+from account_intel.env import load_local_env
 from account_intel.reporting import build_run_report
 from account_intel.worker import Worker
 
+
+load_local_env(ROOT / ".env")
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/account_intel.db")
 ICP_PATH = Path(os.getenv("ICP_PROFILES_PATH", "icp_profiles.yaml"))
@@ -80,6 +83,27 @@ try:
         worker = Worker(db=db, icp_path=ICP_PATH)
         run_id = worker.process_next()
         return {"processed_run_id": run_id}
+
+    @app.post("/slack/send-latest-review")
+    async def send_latest_slack_review(x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+        from account_intel.integrations.slack import SlackWebhookClient, build_review_message_from_report
+
+        require_api_key(x_api_key)
+        webhook_url = os.getenv("SLACK_WEBHOOK_URL", "").strip()
+        if not webhook_url:
+            raise HTTPException(status_code=400, detail="SLACK_WEBHOOK_URL is not configured.")
+        db = get_db()
+        run_id = db.latest_run_id()
+        if not run_id:
+            raise HTTPException(status_code=404, detail="No runs found.")
+        report = build_run_report(db, run_id)
+        if not report["drafts"]:
+            raise HTTPException(status_code=400, detail="Latest run has no draft to review.")
+        message = build_review_message_from_report(report)
+        response = SlackWebhookClient(webhook_url=webhook_url).post_message(message)
+        if not response.get("ok"):
+            raise HTTPException(status_code=502, detail=f"Slack webhook failed: {response.get('response')}")
+        return {"sent": True, "run_id": run_id}
 
     @app.post("/slack/interactions")
     async def slack_interactions(

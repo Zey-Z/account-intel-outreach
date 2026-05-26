@@ -1,18 +1,22 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from account_intel.config import load_icp_profiles
 from account_intel.crew import AccountIntelligenceCrew
 from account_intel.db import Database
+from account_intel.research_tools import build_research_client
 
 
 class Worker:
-    def __init__(self, db: Database, icp_path: Path | None = None, offline: bool = True):
+    def __init__(self, db: Database, icp_path: Path | None = None, offline: bool | None = None):
         self.db = db
         self.icp_path = icp_path or Path("icp_profiles.yaml")
-        self.offline = offline
-        self.crew = AccountIntelligenceCrew()
+        mode = None if offline is None else ("offline" if offline else "tavily")
+        selected_mode = (mode or os.getenv("RESEARCH_MODE", "offline")).lower()
+        self.offline = selected_mode in {"offline", "fixture", "mock"}
+        self.crew = AccountIntelligenceCrew(research_client=build_research_client(mode=mode))
 
     def process_next(self) -> str | None:
         run = self.db.next_queued_run()

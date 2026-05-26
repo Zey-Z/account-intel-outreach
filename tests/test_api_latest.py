@@ -1,7 +1,9 @@
 import asyncio
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import main
 
@@ -10,6 +12,7 @@ class ApiLatestRunTests(unittest.TestCase):
     def setUp(self):
         self.original_database_url = main.DATABASE_URL
         self.original_api_key = main.API_KEY
+        main.API_KEY = ""
 
     def tearDown(self):
         main.DATABASE_URL = self.original_database_url
@@ -83,6 +86,37 @@ class ApiLatestRunTests(unittest.TestCase):
             asyncio.run(main.process_next())
 
         self.assertEqual(caught.exception.status_code, 401)
+
+    def test_send_latest_slack_review_posts_latest_report_message(self):
+        from account_intel.db import Database
+        from account_intel.worker import Worker
+
+        calls = []
+
+        def fake_post_message(self, message):
+            calls.append({"webhook_url": self.webhook_url, "message": message})
+            return {"ok": True, "response": "ok"}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            main.DATABASE_URL = f"sqlite:///{Path(tmp) / 'api.db'}"
+            main.API_KEY = "test-secret"
+            db = Database(main.DATABASE_URL)
+            db.initialize()
+            run_id = db.create_run(
+                triggered_by="unit-test",
+                icp_profile="healthcare_insurance_ops",
+                companies=[{"name": "Northstar Health", "domain": "northstar.example"}],
+            )
+            Worker(db=db, offline=True).process_next()
+
+            with patch.dict(os.environ, {"SLACK_WEBHOOK_URL": "https://hooks.slack.test/services/demo"}):
+                with patch("account_intel.integrations.slack.SlackWebhookClient.post_message", fake_post_message):
+                    response = asyncio.run(main.send_latest_slack_review(x_api_key="test-secret"))
+
+        self.assertEqual(response["run_id"], run_id)
+        self.assertTrue(response["sent"])
+        self.assertEqual(calls[0]["webhook_url"], "https://hooks.slack.test/services/demo")
+        self.assertIn("Review outreach draft", calls[0]["message"]["text"])
 
 
 if __name__ == "__main__":
