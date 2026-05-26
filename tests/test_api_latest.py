@@ -119,9 +119,15 @@ class ApiLatestRunTests(unittest.TestCase):
         self.assertEqual(calls[0]["webhook_url"], "https://hooks.slack.test/services/demo")
         self.assertIn("Review outreach draft", calls[0]["message"]["text"])
 
-    def test_slack_interaction_returns_visible_confirmation(self):
+    def test_slack_interaction_updates_original_review_message(self):
         from account_intel.db import Database
         from account_intel.worker import Worker
+
+        calls = []
+
+        def fake_post_message(self, message):
+            calls.append({"webhook_url": self.webhook_url, "message": message})
+            return {"ok": True, "response": "ok"}
 
         class FakeRequest:
             def __init__(self, payload):
@@ -145,7 +151,23 @@ class ApiLatestRunTests(unittest.TestCase):
             Worker(db=db, offline=True).process_next()
             draft = db.list_outreach_drafts(run_id)[0]
             payload = {
+                "response_url": "https://hooks.slack.test/interaction-response",
                 "user": {"id": "U_TEST", "username": "reviewer"},
+                "message": {
+                    "blocks": [
+                        {"type": "section", "text": {"type": "mrkdwn", "text": "Review card"}},
+                        {
+                            "type": "actions",
+                            "elements": [
+                                {
+                                    "type": "button",
+                                    "text": {"type": "plain_text", "text": "Approve"},
+                                    "action_id": "approve_draft",
+                                }
+                            ],
+                        },
+                    ]
+                },
                 "actions": [
                     {
                         "action_id": "approve_draft",
@@ -155,17 +177,23 @@ class ApiLatestRunTests(unittest.TestCase):
             }
 
             with patch.dict(os.environ, {"SLACK_SIGNING_SECRET": ""}):
-                response = asyncio.run(
-                    main.slack_interactions(
-                        FakeRequest(payload),
-                        x_slack_request_timestamp=None,
-                        x_slack_signature=None,
+                with patch("account_intel.integrations.slack.SlackWebhookClient.post_message", fake_post_message):
+                    response = asyncio.run(
+                        main.slack_interactions(
+                            FakeRequest(payload),
+                            x_slack_request_timestamp=None,
+                            x_slack_signature=None,
+                        )
                     )
-                )
             response_body = json.loads(response.body.decode("utf-8"))
             updated = db.get_outreach_draft(draft["draft_id"])
 
         self.assertEqual(updated["status"], "approved")
+        self.assertTrue(calls, "Slack response_url should be called to update the original message.")
+        self.assertEqual(calls[0]["webhook_url"], "https://hooks.slack.test/interaction-response")
+        self.assertTrue(calls[0]["message"]["replace_original"])
+        self.assertIn("Decision recorded: approved", calls[0]["message"]["text"])
+        self.assertNotIn("actions", [block["type"] for block in calls[0]["message"]["blocks"]])
         self.assertEqual(response_body["response_type"], "ephemeral")
         self.assertIn("Decision recorded: approved", response_body["text"])
 

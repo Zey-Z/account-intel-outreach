@@ -111,7 +111,11 @@ try:
         x_slack_request_timestamp: str | None = Header(default=None),
         x_slack_signature: str | None = Header(default=None),
     ) -> JSONResponse:
-        from account_intel.integrations.slack import verify_slack_signature
+        from account_intel.integrations.slack import (
+            SlackWebhookClient,
+            build_review_decision_update,
+            verify_slack_signature,
+        )
 
         body = await request.body()
         secret = os.getenv("SLACK_SIGNING_SECRET", "")
@@ -130,6 +134,10 @@ try:
             reviewed_by=user,
             revision_note=value.get("revision_note"),
         )
+        response_url = payload.get("response_url")
+        if response_url:
+            update_message = build_review_decision_update(payload, value["decision"], user)
+            SlackWebhookClient(webhook_url=response_url).post_message(update_message)
         return JSONResponse(
             {
                 "response_type": "ephemeral",

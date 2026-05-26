@@ -108,6 +108,29 @@ def build_review_message(draft: dict[str, Any], company_name: str, fit_score: in
     }
 
 
+def build_review_decision_update(payload: dict[str, Any], decision: str, reviewed_by: str) -> dict[str, Any]:
+    """Build the replacement message Slack should show after a review button click."""
+    message = payload.get("message", {})
+    original_blocks = message.get("blocks") or []
+    blocks = [block for block in original_blocks if block.get("type") != "actions"]
+    decision_text = (
+        f"*Decision recorded:* `{decision}`\n"
+        f"*Reviewer:* `{reviewed_by}`\n"
+        "The review buttons were removed because this draft already has a decision."
+    )
+    blocks.extend(
+        [
+            {"type": "divider"},
+            {"type": "section", "text": {"type": "mrkdwn", "text": decision_text}},
+        ]
+    )
+    return {
+        "replace_original": True,
+        "text": f"Decision recorded: {decision}",
+        "blocks": blocks,
+    }
+
+
 def _analysis_for_company(report: dict[str, Any], company_name: str) -> dict[str, Any]:
     for analysis in report.get("analysis", []):
         if analysis.get("company_name") == company_name:

@@ -351,3 +351,27 @@ Slack click reached Render.
 Draft status changed in Neon.
 Slack UI did not visibly confirm the click.
 ```
+
+## 2026-05-26 - Slack Original Message UI Update
+
+Decision:
+
+After a reviewer clicks Approve, Reject, or Request changes, replace the original Slack review card with a read-only version.
+
+Why:
+
+The database status update was already working, but the reviewer still saw the old buttons in Slack. That makes the workflow feel broken because the human cannot tell whether the decision was accepted.
+
+Plain English:
+
+Slack was like a waiter who wrote down your order but never said "got it." Now the card changes after the click, so the reviewer can see the decision was recorded.
+
+Progress completed:
+
+- Added a regression test for Slack original-message replacement.
+- Added a Slack message builder that removes the action buttons after a decision.
+- Updated `/slack/interactions` to call Slack's `response_url` and replace the original review card.
+
+Architecture note:
+
+Slack's `response_url` is a temporary callback URL included in an interaction payload. It lets the app update the specific message where the button was clicked. This keeps the human review surface in sync with the database state.
