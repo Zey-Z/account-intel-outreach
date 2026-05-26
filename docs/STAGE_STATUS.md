@@ -5,13 +5,17 @@
 - Stage 0 local project skeleton.
 - ICP profiles.
 - Offline Researcher fixture.
+- Real Tavily Search/Extract research boundary.
+- Real CrewAI Agent/Task/Crew runtime switch.
 - Grounding validation.
 - Analyst scoring.
 - Writer evidence check.
 - SQLite system of record with Postgres-shaped schema.
 - Worker that processes queued runs.
 - FastAPI endpoint definitions.
-- Slack and HubSpot integration boundaries.
+- Zapier entry trigger path.
+- Live Slack human-review workflow.
+- HubSpot integration boundary.
 - Eval runner.
 - BI-ready SQL views.
 - Human-readable run report script.
@@ -20,11 +24,7 @@
 
 ## Not Yet Connected
 
-- Real CrewAI Agent/Task runtime.
-- Real Tavily Search/Extract calls.
-- Running FastAPI server with installed dependencies.
-- Zapier UI configuration.
-- Slack app configuration.
+- Live CrewAI runtime smoke test with an LLM key.
 - HubSpot private app configuration.
 - Power BI `.pbix` file.
 

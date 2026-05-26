@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 import time
 
+from account_intel.crewai_runtime import CrewAIAccountRuntime
 from account_intel.grounding import ground_findings
 from account_intel.models import (
     AnalystRationale,
@@ -44,8 +46,17 @@ def _has_phi_or_clinical_risk(text: str) -> bool:
 class AccountIntelligenceCrew:
     """Small orchestration boundary for the Researcher -> Analyst -> Writer flow."""
 
-    def __init__(self, research_client: ResearchClient | None = None):
+    def __init__(
+        self,
+        research_client: ResearchClient | None = None,
+        runtime_mode: str | None = None,
+        crewai_module: object | None = None,
+        llm: object | None = None,
+    ):
         self.research_client = research_client or OfflineResearchClient()
+        self.runtime_mode = (runtime_mode or os.getenv("AGENT_RUNTIME", "deterministic")).strip().lower()
+        self.crewai_module = crewai_module
+        self.llm = llm or os.getenv("CREWAI_LLM") or None
 
     def run_company(
         self,
@@ -53,6 +64,12 @@ class AccountIntelligenceCrew:
         domain: str | None,
         profile: ICPProfile,
     ) -> CrewResult:
+        if self.runtime_mode in {"crewai", "crew_ai", "agent"}:
+            return CrewAIAccountRuntime(
+                research_client=self.research_client,
+                crewai_module=self.crewai_module,
+                llm=self.llm,
+            ).run_company(company_name, domain, profile)
         started = time.perf_counter()
         pages = self.research_client.search_and_extract(company_name, domain, profile)
         extracted_text = {page.url: page.text for page in pages}

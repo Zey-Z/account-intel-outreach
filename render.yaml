@@ -12,6 +12,14 @@ services:
         value: icp_profiles.yaml
       - key: ACCOUNT_INTEL_API_KEY
         sync: false
+      - key: RESEARCH_MODE
+        value: offline
+      - key: AGENT_RUNTIME
+        value: deterministic
+      - key: CREWAI_LLM
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
       - key: TAVILY_API_KEY
         sync: false
       - key: SLACK_WEBHOOK_URL

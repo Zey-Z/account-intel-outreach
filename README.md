@@ -58,21 +58,21 @@ Implemented:
 
 - ICP configuration layer.
 - Offline deterministic Researcher fixture.
+- Real CrewAI Agent/Task/Crew runtime switch via `AGENT_RUNTIME=crewai`.
 - Grounding validation.
 - Analyst scoring.
 - Writer evidence check.
 - SQLite-backed system of record with Postgres-shaped tables.
 - Worker that processes queued runs.
 - FastAPI endpoint definitions.
-- Slack and HubSpot integration boundaries.
+- Live Slack human-review workflow.
+- HubSpot integration boundary.
 - Eval runner and BI-ready views.
 - Human-readable run report script.
 
 Next manual setup:
 
-- Install FastAPI/Uvicorn dependencies for API serving.
-- Add real Tavily-backed research client.
-- Configure Slack app and Zapier trigger.
+- Turn on real CrewAI runtime in Render after setting LLM credentials.
 - Connect HubSpot private app.
 - Build Power BI dashboard from the database views.
 

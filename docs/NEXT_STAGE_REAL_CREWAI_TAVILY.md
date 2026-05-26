@@ -1,7 +1,7 @@
-# Next Stage: Real CrewAI + Tavily
+# Real CrewAI + Tavily Runtime
 
-The current project proves the workflow harness with deterministic offline data.
-The next stage replaces the offline research fixture with live tools.
+The project now supports both a deterministic learning/runtime mode and a real
+CrewAI runtime mode.
 
 ## Goal
 
@@ -9,10 +9,10 @@ Keep the same inputs, outputs, database tables, and status machine. Only replace
 the internals of the agent brain.
 
 ```text
-Current:
-OfflineResearchClient -> AccountIntelligenceCrew
+Default:
+OfflineResearchClient -> deterministic AccountIntelligenceCrew
 
-Next:
+Real agent mode:
 Tavily Search/Extract -> CrewAI Researcher/Analyst/Writer tasks -> same schemas
 ```
 
@@ -41,27 +41,46 @@ TAVILY_API_KEY=
 Use public company data only. Do not use PHI, patient data, private personal
 data, or internal customer data.
 
-## Step 3: Replace Research Client
+## Step 3: Choose Runtime Mode
 
-Implement a Tavily-backed `ResearchClient` with the same method:
+For normal local tests and cheap demos:
 
-```python
-search_and_extract(company_name, domain, profile) -> list[ExtractedPage]
+```text
+RESEARCH_MODE=offline
+AGENT_RUNTIME=deterministic
 ```
 
-This keeps the rest of the workflow unchanged.
+For real web research but deterministic Analyst/Writer logic:
 
-## Step 4: Replace Deterministic Crew Internals
+```text
+RESEARCH_MODE=tavily
+AGENT_RUNTIME=deterministic
+```
 
-Create CrewAI agents for:
+For the full CrewAI multi-agent runtime:
 
-- Researcher
-- Analyst
-- Writer
+```text
+RESEARCH_MODE=tavily
+AGENT_RUNTIME=crewai
+OPENAI_API_KEY=<your LLM key>
+CREWAI_LLM=<optional model setting>
+```
 
-Each task should return the same schema currently used by the deterministic
-implementation. Do not let the agent write directly to the database. The worker
-should still own persistence and status transitions.
+## Runtime Design
+
+The worker and database do not change. `AccountIntelligenceCrew.run_company()`
+keeps returning the same `CrewResult`.
+
+The real CrewAI runtime creates:
+
+- `Senior Account Researcher`
+- `GTM Fit Strategist`
+- `Personalized Outreach Copywriter`
+
+Each agent receives a task with `output_pydantic`, so the system can convert the
+agent result back into our typed workflow schema. The harness still owns Tavily
+page fetching, grounding validation, writer evidence checks, database writes,
+and status transitions.
 
 ## Step 5: Re-run Existing Tests
 

@@ -421,3 +421,30 @@ Progress completed:
 - Added `slack_review_message_update` event logging.
 - Added tests for both Slack update paths.
 - Verified local tests: 35 tests passed.
+
+## 2026-05-26 - Real CrewAI Runtime Boundary
+
+Decision:
+
+Add a real CrewAI runtime behind the existing `AccountIntelligenceCrew.run_company()` contract, selected by `AGENT_RUNTIME=crewai`.
+
+Why:
+
+The system already had a reliable business workflow shell: API, worker, database, Tavily research boundary, validation, and Slack review. The next important capability gap was that the Researcher / Analyst / Writer roles were still deterministic Python logic rather than real CrewAI Agent / Task / Crew orchestration.
+
+Plain English:
+
+We changed the brain without changing the body. The worker, database, Slack review, Zapier entry, and reporting still see the same output shape, but the internal reasoning can now be handled by a real three-agent CrewAI crew.
+
+Progress completed:
+
+- Added `CrewAIAccountRuntime`.
+- Added CrewAI Pydantic output schemas for Researcher, Analyst, and Writer tasks.
+- Added three CrewAI agents: `Senior Account Researcher`, `GTM Fit Strategist`, and `Personalized Outreach Copywriter`.
+- Added sequential CrewAI task orchestration with `Process.sequential`.
+- Kept Tavily/page fetching and grounding checks in the harness for source control.
+- Added `AGENT_RUNTIME`, `CREWAI_LLM`, and `OPENAI_API_KEY` configuration documentation.
+
+Architecture note:
+
+The runtime switch is intentionally conservative. `AGENT_RUNTIME=deterministic` remains the default for tests and low-cost demos. `AGENT_RUNTIME=crewai` enables the real CrewAI path after LLM credentials are configured.
