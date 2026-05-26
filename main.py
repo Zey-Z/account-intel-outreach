@@ -130,7 +130,13 @@ try:
             reviewed_by=user,
             revision_note=value.get("revision_note"),
         )
-        return JSONResponse({"text": f"Decision recorded: {value['decision']}"})
+        return JSONResponse(
+            {
+                "response_type": "ephemeral",
+                "replace_original": False,
+                "text": f"Decision recorded: {value['decision']}",
+            }
+        )
 
 except ModuleNotFoundError:
     app = None

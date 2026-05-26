@@ -322,3 +322,32 @@ Then use:
 POST https://<render-url>/slack/send-latest-review
 Header: X-API-Key: <ACCOUNT_INTEL_API_KEY>
 ```
+
+## 2026-05-25 - Slack Button Feedback
+
+Decision:
+
+Return a visible ephemeral confirmation after Slack button clicks.
+
+Why:
+
+The backend successfully updated draft status, but Slack did not visibly change. That confused the reviewer. A human approval workflow should show feedback when a decision is recorded.
+
+Plain English:
+
+The button was working, but Slack was not saying "got it." Now it should.
+
+Progress completed:
+
+- Added a test for Slack interaction confirmation response.
+- Updated `/slack/interactions` to return `response_type=ephemeral`.
+- Kept `replace_original=False` so the original review message stays visible.
+- Verified local tests: 34 tests passed.
+
+Observed live state before this fix:
+
+```text
+Slack click reached Render.
+Draft status changed in Neon.
+Slack UI did not visibly confirm the click.
+```

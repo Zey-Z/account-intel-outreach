@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import tempfile
 import unittest
@@ -117,6 +118,56 @@ class ApiLatestRunTests(unittest.TestCase):
         self.assertTrue(response["sent"])
         self.assertEqual(calls[0]["webhook_url"], "https://hooks.slack.test/services/demo")
         self.assertIn("Review outreach draft", calls[0]["message"]["text"])
+
+    def test_slack_interaction_returns_visible_confirmation(self):
+        from account_intel.db import Database
+        from account_intel.worker import Worker
+
+        class FakeRequest:
+            def __init__(self, payload):
+                self.payload = payload
+
+            async def body(self):
+                return b"payload={}"
+
+            async def form(self):
+                return {"payload": json.dumps(self.payload)}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            main.DATABASE_URL = f"sqlite:///{Path(tmp) / 'api.db'}"
+            db = Database(main.DATABASE_URL)
+            db.initialize()
+            run_id = db.create_run(
+                triggered_by="unit-test",
+                icp_profile="healthcare_insurance_ops",
+                companies=[{"name": "Northstar Health", "domain": "northstar.example"}],
+            )
+            Worker(db=db, offline=True).process_next()
+            draft = db.list_outreach_drafts(run_id)[0]
+            payload = {
+                "user": {"id": "U_TEST", "username": "reviewer"},
+                "actions": [
+                    {
+                        "action_id": "approve_draft",
+                        "value": json.dumps({"draft_id": draft["draft_id"], "decision": "approved"}),
+                    }
+                ],
+            }
+
+            with patch.dict(os.environ, {"SLACK_SIGNING_SECRET": ""}):
+                response = asyncio.run(
+                    main.slack_interactions(
+                        FakeRequest(payload),
+                        x_slack_request_timestamp=None,
+                        x_slack_signature=None,
+                    )
+                )
+            response_body = json.loads(response.body.decode("utf-8"))
+            updated = db.get_outreach_draft(draft["draft_id"])
+
+        self.assertEqual(updated["status"], "approved")
+        self.assertEqual(response_body["response_type"], "ephemeral")
+        self.assertIn("Decision recorded: approved", response_body["text"])
 
 
 if __name__ == "__main__":
