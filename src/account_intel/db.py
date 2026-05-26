@@ -366,6 +366,21 @@ class Database:
                 raise KeyError(draft_id)
             return self._decode_draft(dict(row))
 
+    def get_run_id_for_draft(self, draft_id: str) -> str:
+        with self.connect() as conn:
+            row = conn.execute(
+                """
+                SELECT c.run_id
+                FROM outreach_drafts d
+                JOIN companies c ON c.company_id = d.company_id
+                WHERE d.draft_id = ?
+                """,
+                (draft_id,),
+            ).fetchone()
+            if row is None:
+                raise KeyError(draft_id)
+            return str(row["run_id"])
+
     def update_draft_review(
         self,
         draft_id: str,

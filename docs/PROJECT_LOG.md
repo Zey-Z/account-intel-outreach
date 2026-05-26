@@ -396,3 +396,28 @@ Progress completed:
 - Removed the extra response-url POST from the button handler.
 - Kept the database status update before the UI response.
 - Verified local tests: 34 tests passed.
+
+## 2026-05-26 - Slack Message Update Strategy
+
+Decision:
+
+Use a two-layer Slack update strategy after review buttons are clicked:
+
+1. Prefer Slack Web API `chat.update` when `SLACK_BOT_TOKEN`, channel ID, and message timestamp are available.
+2. Fall back to Slack `response_url` replacement when bot-token update is unavailable.
+
+Why:
+
+Live testing proved the database update worked, but the Slack card did not visually change. Slack's current docs describe `response_url` as the message-response path for interactions and `chat.update` as the normal API path for updating non-ephemeral messages. The system now supports both and records which path was used.
+
+Plain English:
+
+Before, we knew the kitchen got the order, but the waiter never updated the table. Now the system tries the strongest update method first, has a backup method, and writes down what happened.
+
+Progress completed:
+
+- Added `SlackWebApiClient` for `chat.update`.
+- Added response-url fallback.
+- Added `slack_review_message_update` event logging.
+- Added tests for both Slack update paths.
+- Verified local tests: 35 tests passed.

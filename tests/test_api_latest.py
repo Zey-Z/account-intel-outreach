@@ -119,9 +119,15 @@ class ApiLatestRunTests(unittest.TestCase):
         self.assertEqual(calls[0]["webhook_url"], "https://hooks.slack.test/services/demo")
         self.assertIn("Review outreach draft", calls[0]["message"]["text"])
 
-    def test_slack_interaction_updates_original_review_message(self):
+    def test_slack_interaction_falls_back_to_response_url_update(self):
         from account_intel.db import Database
         from account_intel.worker import Worker
+
+        calls = []
+
+        def fake_post_message(self, message):
+            calls.append({"webhook_url": self.webhook_url, "message": message})
+            return {"ok": True, "response": "ok"}
 
         class FakeRequest:
             def __init__(self, payload):
@@ -171,20 +177,106 @@ class ApiLatestRunTests(unittest.TestCase):
             }
 
             with patch.dict(os.environ, {"SLACK_SIGNING_SECRET": ""}):
-                response = asyncio.run(
-                    main.slack_interactions(
-                        FakeRequest(payload),
-                        x_slack_request_timestamp=None,
-                        x_slack_signature=None,
+                with patch("account_intel.integrations.slack.SlackWebhookClient.post_message", fake_post_message):
+                    response = asyncio.run(
+                        main.slack_interactions(
+                            FakeRequest(payload),
+                            x_slack_request_timestamp=None,
+                            x_slack_signature=None,
+                        )
                     )
-                )
             response_body = json.loads(response.body.decode("utf-8"))
             updated = db.get_outreach_draft(draft["draft_id"])
+            events = db.list_events(run_id)
 
         self.assertEqual(updated["status"], "approved")
-        self.assertTrue(response_body["replace_original"])
+        self.assertTrue(calls)
+        self.assertEqual(calls[0]["webhook_url"], "https://hooks.slack.test/interaction-response")
+        self.assertTrue(calls[0]["message"]["replace_original"])
+        self.assertNotIn("actions", [block["type"] for block in calls[0]["message"]["blocks"]])
+        self.assertEqual(response_body["response_type"], "ephemeral")
         self.assertIn("Decision recorded: approved", response_body["text"])
-        self.assertNotIn("actions", [block["type"] for block in response_body["blocks"]])
+        slack_events = [event for event in events if event["event_type"] == "slack_review_message_update"]
+        self.assertEqual(slack_events[0]["payload"]["method"], "response_url")
+        self.assertTrue(slack_events[0]["payload"]["ok"])
+
+    def test_slack_interaction_prefers_chat_update_when_bot_token_is_configured(self):
+        from account_intel.db import Database
+        from account_intel.worker import Worker
+
+        calls = []
+
+        def fake_update_message(self, channel_id, message_ts, message):
+            calls.append(
+                {
+                    "token": self.bot_token,
+                    "channel_id": channel_id,
+                    "message_ts": message_ts,
+                    "message": message,
+                }
+            )
+            return {"ok": True, "response": {"ok": True, "ts": message_ts}}
+
+        class FakeRequest:
+            def __init__(self, payload):
+                self.payload = payload
+
+            async def body(self):
+                return b"payload={}"
+
+            async def form(self):
+                return {"payload": json.dumps(self.payload)}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            main.DATABASE_URL = f"sqlite:///{Path(tmp) / 'api.db'}"
+            db = Database(main.DATABASE_URL)
+            db.initialize()
+            run_id = db.create_run(
+                triggered_by="unit-test",
+                icp_profile="healthcare_insurance_ops",
+                companies=[{"name": "Northstar Health", "domain": "northstar.example"}],
+            )
+            Worker(db=db, offline=True).process_next()
+            draft = db.list_outreach_drafts(run_id)[0]
+            payload = {
+                "response_url": "https://hooks.slack.test/interaction-response",
+                "user": {"id": "U_TEST", "username": "reviewer"},
+                "channel": {"id": "C_TEST"},
+                "message": {
+                    "ts": "1710000000.123456",
+                    "blocks": [
+                        {"type": "section", "text": {"type": "mrkdwn", "text": "Review card"}},
+                        {"type": "actions", "elements": []},
+                    ],
+                },
+                "actions": [
+                    {
+                        "action_id": "approve_draft",
+                        "value": json.dumps({"draft_id": draft["draft_id"], "decision": "approved"}),
+                    }
+                ],
+            }
+
+            with patch.dict(os.environ, {"SLACK_SIGNING_SECRET": "", "SLACK_BOT_TOKEN": "test-bot-token"}):
+                with patch("account_intel.integrations.slack.SlackWebApiClient.update_message", fake_update_message):
+                    response = asyncio.run(
+                        main.slack_interactions(
+                            FakeRequest(payload),
+                            x_slack_request_timestamp=None,
+                            x_slack_signature=None,
+                        )
+                    )
+            response_body = json.loads(response.body.decode("utf-8"))
+            events = db.list_events(run_id)
+
+        self.assertEqual(calls[0]["token"], "test-bot-token")
+        self.assertEqual(calls[0]["channel_id"], "C_TEST")
+        self.assertEqual(calls[0]["message_ts"], "1710000000.123456")
+        self.assertNotIn("actions", [block["type"] for block in calls[0]["message"]["blocks"]])
+        self.assertEqual(response_body["response_type"], "ephemeral")
+        slack_events = [event for event in events if event["event_type"] == "slack_review_message_update"]
+        self.assertEqual(slack_events[0]["payload"]["method"], "chat.update")
+        self.assertTrue(slack_events[0]["payload"]["ok"])
 
 
 if __name__ == "__main__":

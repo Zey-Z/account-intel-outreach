@@ -112,6 +112,8 @@ try:
         x_slack_signature: str | None = Header(default=None),
     ) -> JSONResponse:
         from account_intel.integrations.slack import (
+            SlackWebApiClient,
+            SlackWebhookClient,
             build_review_decision_update,
             verify_slack_signature,
         )
@@ -134,7 +136,79 @@ try:
             revision_note=value.get("revision_note"),
         )
         update_message = build_review_decision_update(payload, value["decision"], user)
-        return JSONResponse(update_message)
+        run_id = db.get_run_id_for_draft(value["draft_id"])
+        update_result = _update_slack_review_message(
+            payload=payload,
+            update_message=update_message,
+            web_api_client_class=SlackWebApiClient,
+            webhook_client_class=SlackWebhookClient,
+        )
+        db.log_event(run_id, "slack_review_message_update", update_result)
+        return JSONResponse(
+            {
+                "response_type": "ephemeral",
+                "replace_original": False,
+                "text": f"Decision recorded: {value['decision']}",
+            }
+        )
 
 except ModuleNotFoundError:
     app = None
+
+
+def _update_slack_review_message(
+    payload: dict[str, Any],
+    update_message: dict[str, Any],
+    web_api_client_class: Any,
+    webhook_client_class: Any,
+) -> dict[str, Any]:
+    channel_id = _slack_channel_id(payload)
+    message_ts = _slack_message_ts(payload)
+    bot_token = os.getenv("SLACK_BOT_TOKEN", "").strip()
+    response_url = str(payload.get("response_url") or "").strip()
+    result = {
+        "method": "none",
+        "ok": False,
+        "has_bot_token": bool(bot_token),
+        "has_message_target": bool(channel_id and message_ts),
+        "has_response_url": bool(response_url),
+    }
+    chat_update_error = None
+    if bot_token and channel_id and message_ts:
+        try:
+            response = web_api_client_class(bot_token=bot_token).update_message(channel_id, message_ts, update_message)
+            result.update({"method": "chat.update", "ok": bool(response.get("ok"))})
+            if result["ok"]:
+                return result
+            chat_update_error = str(response.get("response"))
+        except Exception as exc:
+            chat_update_error = str(exc)
+    if response_url:
+        try:
+            response = webhook_client_class(webhook_url=response_url).post_message(update_message)
+            result.update({"method": "response_url", "ok": bool(response.get("ok"))})
+            if chat_update_error:
+                result["chat_update_error"] = chat_update_error
+            if not result["ok"]:
+                result["response_url_error"] = str(response.get("response"))
+            return result
+        except Exception as exc:
+            result.update({"method": "response_url", "ok": False, "response_url_error": str(exc)})
+            if chat_update_error:
+                result["chat_update_error"] = chat_update_error
+            return result
+    if chat_update_error:
+        result["chat_update_error"] = chat_update_error
+    return result
+
+
+def _slack_channel_id(payload: dict[str, Any]) -> str | None:
+    channel = payload.get("channel") or {}
+    container = payload.get("container") or {}
+    return channel.get("id") or container.get("channel_id")
+
+
+def _slack_message_ts(payload: dict[str, Any]) -> str | None:
+    message = payload.get("message") or {}
+    container = payload.get("container") or {}
+    return message.get("ts") or container.get("message_ts")

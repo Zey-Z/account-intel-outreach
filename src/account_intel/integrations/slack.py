@@ -19,6 +19,29 @@ class SlackWebhookClient:
         return self.post_json(self.webhook_url, message, timeout_seconds)
 
 
+class SlackWebApiClient:
+    def __init__(self, bot_token: str, post_json: Any | None = None):
+        if not bot_token:
+            raise ValueError("Slack bot token is required.")
+        self.bot_token = bot_token
+        self.post_json = post_json or _post_authorized_json
+
+    def update_message(
+        self,
+        channel_id: str,
+        message_ts: str,
+        message: dict[str, Any],
+        timeout_seconds: int = 10,
+    ) -> dict[str, Any]:
+        payload = {
+            "channel": channel_id,
+            "ts": message_ts,
+            "text": message["text"],
+            "blocks": message.get("blocks", []),
+        }
+        return self.post_json("https://slack.com/api/chat.update", self.bot_token, payload, timeout_seconds)
+
+
 def build_review_message_from_report(report: dict[str, Any]) -> dict[str, Any]:
     """Build a Slack Block Kit review message from one run report."""
     draft = report["drafts"][0]
@@ -199,6 +222,20 @@ def _post_json(url: str, payload: dict[str, Any], timeout_seconds: int) -> dict[
     with request.urlopen(req, timeout=timeout_seconds) as response:
         response_body = response.read().decode("utf-8")
     return {"ok": response_body.strip().lower() == "ok", "response": response_body}
+
+
+def _post_authorized_json(url: str, token: str, payload: dict[str, Any], timeout_seconds: int) -> dict[str, Any]:
+    body = json.dumps(payload).encode("utf-8")
+    req = request.Request(
+        url,
+        data=body,
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
+        method="POST",
+    )
+    with request.urlopen(req, timeout=timeout_seconds) as response:
+        response_body = response.read().decode("utf-8")
+    response_json = json.loads(response_body)
+    return {"ok": bool(response_json.get("ok")), "response": response_json}
 
 
 def verify_slack_signature(
