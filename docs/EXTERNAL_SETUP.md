@@ -22,10 +22,13 @@
 1. Create a Slack app.
 2. Enable Incoming Webhooks and add the webhook to the review channel.
 3. Copy the webhook URL into `SLACK_WEBHOOK_URL`.
-4. Enable interactivity.
-5. Set Request URL to `https://<render-url>/slack/interactions`.
-6. Copy signing secret into `SLACK_SIGNING_SECRET`.
-7. Send a review message from the same Render environment that will handle button clicks:
+4. In OAuth & Permissions, make sure the bot has `chat:write`.
+5. Install or reinstall the app to the workspace.
+6. Copy the Bot User OAuth Token into `SLACK_BOT_TOKEN`.
+7. Enable interactivity.
+8. Set Request URL to `https://<render-url>/slack/interactions`.
+9. Copy signing secret into `SLACK_SIGNING_SECRET`.
+10. Send a review message from the same Render environment that will handle button clicks:
 
 ```text
 POST https://<render-url>/slack/send-latest-review
