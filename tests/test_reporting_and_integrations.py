@@ -1,10 +1,13 @@
 import hashlib
 import hmac
 import json
+import sys
 import tempfile
 import time
 import unittest
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 
 class ReportingAndIntegrationTests(unittest.TestCase):
@@ -142,6 +145,13 @@ class ReportingAndIntegrationTests(unittest.TestCase):
         self.assertEqual(calls[0]["url"], "https://hooks.slack.test/services/demo")
         self.assertEqual(calls[0]["payload"]["text"], "Review outreach draft")
         self.assertEqual(calls[0]["timeout_seconds"], 10)
+
+    def test_slack_webhook_sender_accepts_json_ok_response(self):
+        from account_intel.integrations.slack import parse_slack_webhook_response
+
+        response = parse_slack_webhook_response('{"ok":true}')
+
+        self.assertEqual(response, {"ok": True, "response": {"ok": True}})
 
     def test_hubspot_note_payload_keeps_sources_with_draft(self):
         from account_intel.integrations.hubspot import HubSpotClient

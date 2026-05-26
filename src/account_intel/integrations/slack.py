@@ -221,7 +221,18 @@ def _post_json(url: str, payload: dict[str, Any], timeout_seconds: int) -> dict[
     req = request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
     with request.urlopen(req, timeout=timeout_seconds) as response:
         response_body = response.read().decode("utf-8")
-    return {"ok": response_body.strip().lower() == "ok", "response": response_body}
+    return parse_slack_webhook_response(response_body)
+
+
+def parse_slack_webhook_response(response_body: str) -> dict[str, Any]:
+    response_text = response_body.strip()
+    if response_text.lower() == "ok":
+        return {"ok": True, "response": response_body}
+    try:
+        response_json = json.loads(response_text)
+    except json.JSONDecodeError:
+        return {"ok": False, "response": response_body}
+    return {"ok": bool(response_json.get("ok")), "response": response_json}
 
 
 def _post_authorized_json(url: str, token: str, payload: dict[str, Any], timeout_seconds: int) -> dict[str, Any]:
