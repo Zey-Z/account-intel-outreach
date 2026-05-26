@@ -112,7 +112,6 @@ try:
         x_slack_signature: str | None = Header(default=None),
     ) -> JSONResponse:
         from account_intel.integrations.slack import (
-            SlackWebhookClient,
             build_review_decision_update,
             verify_slack_signature,
         )
@@ -134,17 +133,8 @@ try:
             reviewed_by=user,
             revision_note=value.get("revision_note"),
         )
-        response_url = payload.get("response_url")
-        if response_url:
-            update_message = build_review_decision_update(payload, value["decision"], user)
-            SlackWebhookClient(webhook_url=response_url).post_message(update_message)
-        return JSONResponse(
-            {
-                "response_type": "ephemeral",
-                "replace_original": False,
-                "text": f"Decision recorded: {value['decision']}",
-            }
-        )
+        update_message = build_review_decision_update(payload, value["decision"], user)
+        return JSONResponse(update_message)
 
 except ModuleNotFoundError:
     app = None

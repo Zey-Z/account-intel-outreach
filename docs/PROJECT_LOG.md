@@ -375,3 +375,24 @@ Progress completed:
 Architecture note:
 
 Slack's `response_url` is a temporary callback URL included in an interaction payload. It lets the app update the specific message where the button was clicked. This keeps the human review surface in sync with the database state.
+
+## 2026-05-26 - Slack Direct Interaction Response
+
+Decision:
+
+Return the replacement Slack message directly from `/slack/interactions` instead of only posting an update to `response_url`.
+
+Why:
+
+Live testing showed the database changed to `approved`, but the Slack card still did not visually change. That proved the button handler worked and the remaining issue was UI feedback. Directly returning the replacement message is simpler: Slack sends the button click, and the API immediately answers with the new version of the card.
+
+Plain English:
+
+Instead of saying "I will update the card later," the API now answers Slack with "show this updated card right now."
+
+Progress completed:
+
+- Updated the Slack interaction test to require `replace_original=true` in the direct response.
+- Removed the extra response-url POST from the button handler.
+- Kept the database status update before the UI response.
+- Verified local tests: 34 tests passed.

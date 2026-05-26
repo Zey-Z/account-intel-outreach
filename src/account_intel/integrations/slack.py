@@ -125,6 +125,7 @@ def build_review_decision_update(payload: dict[str, Any], decision: str, reviewe
         ]
     )
     return {
+        "response_type": "in_channel",
         "replace_original": True,
         "text": f"Decision recorded: {decision}",
         "blocks": blocks,
