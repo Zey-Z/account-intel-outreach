@@ -4,6 +4,7 @@ import json
 import hmac
 import os
 import sys
+from asyncio import to_thread
 from pathlib import Path
 from typing import Any
 
@@ -81,7 +82,7 @@ try:
         require_api_key(x_api_key)
         db = get_db()
         worker = Worker(db=db, icp_path=ICP_PATH)
-        run_id = worker.process_next()
+        run_id = await to_thread(worker.process_next)
         return {"processed_run_id": run_id}
 
     @app.post("/slack/send-latest-review")

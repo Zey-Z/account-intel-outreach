@@ -88,6 +88,29 @@ class ApiLatestRunTests(unittest.TestCase):
 
         self.assertEqual(caught.exception.status_code, 401)
 
+    def test_worker_endpoint_runs_blocking_worker_in_thread(self):
+        calls = []
+
+        class FakeWorker:
+            def __init__(self, db, icp_path):
+                self.db = db
+                self.icp_path = icp_path
+
+            def process_next(self):
+                calls.append("worker-called")
+                return "run_123"
+
+        async def fake_to_thread(func):
+            calls.append("to-thread-called")
+            return func()
+
+        with patch("main.Worker", FakeWorker):
+            with patch("main.to_thread", fake_to_thread):
+                response = asyncio.run(main.process_next())
+
+        self.assertEqual(response, {"processed_run_id": "run_123"})
+        self.assertEqual(calls, ["to-thread-called", "worker-called"])
+
     def test_send_latest_slack_review_posts_latest_report_message(self):
         from account_intel.db import Database
         from account_intel.worker import Worker
