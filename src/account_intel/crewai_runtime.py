@@ -227,7 +227,9 @@ class CrewAIAccountRuntime:
             description=(
                 f"{context}\n\n"
                 "Draft a short outreach email. Do not send it. Use only facts from Researcher findings. "
-                "Set review_flag to needs_human_review when confidence is low or evidence is thin."
+                "Set review_flag to needs_human_review when confidence is low or evidence is thin. "
+                "needs_human_review is not a failure; it means the draft should still go to Slack for a person to review "
+                "when the account is source-grounded and ICP fit is strong enough."
             ),
             expected_output="Structured outreach draft with subject, body, confidence, review_flag, and evidence_refs.",
             agent=writer,

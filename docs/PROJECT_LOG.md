@@ -472,6 +472,7 @@ Progress completed:
 - Updated Tavily research to extract registry seed URLs before search-result URLs.
 - Kept facts live: the registry stores source URLs and field hints, not claims.
 - Updated status routing so grounded accounts with `fit_score >= 60` enter Slack review.
+- Clarified the Writer prompt: `needs_human_review` means "send to Slack for a person," not "block the account."
 - Added regression tests for source seeding and review routing.
 
 Architecture note:
