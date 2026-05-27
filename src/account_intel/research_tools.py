@@ -4,8 +4,11 @@ import os
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, Protocol
 from urllib.parse import urlparse
+
+import yaml
 
 from account_intel.models import ICPProfile, SourceEvidence
 
@@ -92,10 +95,17 @@ class OfflineResearchClient:
 class TavilyResearchClient:
     """Research client that reads public web pages through Tavily Search and Extract."""
 
-    def __init__(self, api_key: str, sdk_client: Any | None = None, max_results: int = 5):
+    def __init__(
+        self,
+        api_key: str,
+        sdk_client: Any | None = None,
+        max_results: int = 5,
+        source_registry_path: Path | str | None = None,
+    ):
         if not api_key:
             raise ValueError("TAVILY_API_KEY is required when RESEARCH_MODE=tavily.")
         self.max_results = max_results
+        self.source_registry_path = Path(source_registry_path or os.getenv("SOURCE_REGISTRY_PATH", "source_registry.yaml"))
         if sdk_client is not None:
             self.client = sdk_client
         else:
@@ -119,7 +129,8 @@ class TavilyResearchClient:
             include_raw_content=False,
             include_domains=domain_variants(domain),
         )
-        urls = _urls_from_search(search_response)[: self.max_results]
+        urls = merge_seed_and_search_urls(registry_seed_urls(domain, self.source_registry_path), _urls_from_search(search_response))
+        urls = urls[: self.max_results]
         if not urls:
             return []
         extract_response = self.client.extract(
@@ -153,6 +164,34 @@ def build_research_client(mode: str | None = None, api_key: str | None = None) -
         selected_key = api_key if api_key is not None else os.getenv("TAVILY_API_KEY", "")
         return TavilyResearchClient(api_key=selected_key)
     raise ValueError(f"Unsupported research mode: {selected_mode}")
+
+
+def registry_seed_urls(domain: str | None, registry_path: Path | str = "source_registry.yaml") -> list[str]:
+    if not domain:
+        return []
+    path = Path(registry_path)
+    if not path.exists():
+        return []
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    companies = data.get("companies") or {}
+    clean_domain = domain.lower().replace("https://", "").replace("http://", "").strip("/").removeprefix("www.")
+    config = companies.get(clean_domain) or companies.get(f"www.{clean_domain}") or {}
+    return [
+        str(source.get("url", "")).strip()
+        for source in config.get("stable_sources", [])
+        if str(source.get("url", "")).strip()
+    ]
+
+
+def merge_seed_and_search_urls(seed_urls: list[str], search_urls: list[str]) -> list[str]:
+    urls: list[str] = []
+    seen: set[str] = set()
+    for url in seed_urls + search_urls:
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        urls.append(url)
+    return urls
 
 
 def build_tavily_query(company_name: str, domain: str | None, profile: ICPProfile) -> str:

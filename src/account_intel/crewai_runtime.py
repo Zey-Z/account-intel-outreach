@@ -324,6 +324,8 @@ class CrewAIAccountRuntime:
             return "needs_human_research"
         if analysis.fit_score < 45:
             return "archived"
+        if analysis.fit_score >= 60:
+            return "sent_to_review"
         if draft.review_flag == "ready_for_review":
             return "sent_to_review"
         return "needs_human_research"

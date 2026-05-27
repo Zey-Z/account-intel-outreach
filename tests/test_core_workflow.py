@@ -1,7 +1,10 @@
 import tempfile
+import sys
 import unittest
 from contextlib import contextmanager
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 
 class CoreWorkflowTests(unittest.TestCase):
@@ -61,6 +64,59 @@ class CoreWorkflowTests(unittest.TestCase):
 
         self.assertEqual(updated.review_flag, "needs_human_review")
         self.assertIn("unsupported", updated.validation_notes.lower())
+
+    def test_grounded_fit_account_routes_to_slack_review_even_when_draft_needs_review(self):
+        from account_intel.crew import AccountIntelligenceCrew
+        from account_intel.models import AnalystRationale, OutreachDraft, ResearchFindings, SourceEvidence
+
+        research = ResearchFindings(
+            company_name="Oscar Health",
+            domain="hioscar.com",
+            findings=[
+                SourceEvidence(
+                    claim="Oscar Health supports member engagement and healthcare operations workflows.",
+                    source_url="https://www.hioscar.com/about",
+                    source_type="company_website",
+                    retrieved_at="2026-05-26T00:00:00Z",
+                    grounding_passed=True,
+                ),
+                SourceEvidence(
+                    claim="+Oscar supports healthcare clients through platform-based services.",
+                    source_url="https://www.hioscar.com/plus-oscar",
+                    source_type="company_website",
+                    retrieved_at="2026-05-26T00:00:00Z",
+                    grounding_passed=True,
+                ),
+                SourceEvidence(
+                    claim="Oscar Health hires member care roles for healthcare support teams.",
+                    source_url="https://www.hioscar.com/careers/member-care",
+                    source_type="job_post",
+                    retrieved_at="2026-05-26T00:00:00Z",
+                    grounding_passed=True,
+                ),
+            ],
+            grounding_passed=True,
+        )
+        analysis = AnalystRationale(
+            fit_score=65,
+            pain_point_match="member support triage",
+            buying_trigger="Public operations and member-care signals.",
+            risk_flags=[],
+            recommended_angle="AI-assisted exception triage with human approval",
+            confidence=0.66,
+            evidence_refs=[],
+        )
+        draft = OutreachDraft(
+            subject="Idea for Oscar operations workflows",
+            body="Human review should check this draft.",
+            confidence=0.66,
+            review_flag="needs_human_review",
+            evidence_refs=[],
+        )
+
+        status = AccountIntelligenceCrew._status_for(research, analysis, draft)
+
+        self.assertEqual(status, "sent_to_review")
 
     def test_database_run_lifecycle_and_event_logging(self):
         from account_intel.db import Database

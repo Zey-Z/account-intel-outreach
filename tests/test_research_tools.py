@@ -1,7 +1,10 @@
 import os
+import sys
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 
 class FakeTavilySdk:
@@ -63,6 +66,19 @@ class ResearchToolsTests(unittest.TestCase):
         self.assertNotIn("site:", fake_sdk.search_calls[0]["query"])
         self.assertEqual(fake_sdk.search_calls[0]["include_domains"], ["centene.com", "www.centene.com"])
         self.assertEqual(fake_sdk.extract_calls[0]["urls"][0], "https://www.centene.com/")
+
+    def test_tavily_client_prefers_registry_seed_urls_for_known_company(self):
+        from account_intel.research_tools import TavilyResearchClient
+
+        fake_sdk = FakeTavilySdk()
+        client = TavilyResearchClient(api_key="test-key", sdk_client=fake_sdk, max_results=5)
+
+        client.search_and_extract("Oscar Health", "hioscar.com", self._profile())
+
+        extracted_urls = fake_sdk.extract_calls[0]["urls"]
+        self.assertEqual(extracted_urls[0], "https://www.hioscar.com/about")
+        self.assertIn("https://www.hioscar.com/plus-oscar", extracted_urls)
+        self.assertIn("https://www.hioscar.com/careers/member-care", extracted_urls)
 
     def test_build_research_client_defaults_to_offline(self):
         from account_intel.research_tools import OfflineResearchClient, build_research_client

@@ -58,6 +58,7 @@ Implemented:
 
 - ICP configuration layer.
 - Offline deterministic Researcher fixture.
+- Stable source registry for official source seeding.
 - Real CrewAI Agent/Task/Crew runtime switch via `AGENT_RUNTIME=crewai`.
 - Grounding validation.
 - Analyst scoring.

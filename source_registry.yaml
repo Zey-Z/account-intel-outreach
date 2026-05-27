@@ -1,0 +1,30 @@
+companies:
+  hioscar.com:
+    company_name: Oscar Health
+    stable_sources:
+      - url: https://www.hioscar.com/about
+        source_type: company_website
+        field_hints:
+          - company_profile
+          - member_scale
+          - technology_platform
+      - url: https://www.hioscar.com/plus-oscar
+        source_type: company_website
+        field_hints:
+          - product_positioning
+          - healthcare_clients
+          - engagement_operations
+      - url: https://www.hioscar.com/careers/member-care
+        source_type: job_post
+        field_hints:
+          - member_support
+          - service_operations
+      - url: https://ir.hioscar.com/overview
+        source_type: company_website
+        field_hints:
+          - investor_profile
+          - platform_positioning
+      - url: https://www.hioscar.com/press
+        source_type: press_release
+        field_hints:
+          - recent_company_updates

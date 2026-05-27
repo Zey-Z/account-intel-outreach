@@ -448,3 +448,32 @@ Progress completed:
 Architecture note:
 
 The runtime switch is intentionally conservative. `AGENT_RUNTIME=deterministic` remains the default for tests and low-cost demos. `AGENT_RUNTIME=crewai` enables the real CrewAI path after LLM credentials are configured.
+
+## 2026-05-26 - Stable Source Seeds and Review Routing
+
+Decision:
+
+Add a curated source registry for stable official company pages, and route grounded-fit accounts to Slack review even when the draft itself is marked `needs_human_review`.
+
+Why:
+
+The first live CrewAI smoke test produced grounded findings and a valid fit score, but routed to `needs_human_research` because the writer confidence flag was conservative. That mixed up two different human actions:
+
+- `needs_human_research` means the system lacks enough source evidence.
+- `needs_human_review` means the draft needs a human reviewer before approval.
+
+Plain English:
+
+If the research folder has enough evidence, send the case to the review desk. The reviewer can still decide the draft needs edits.
+
+Progress completed:
+
+- Added `source_registry.yaml` with stable Oscar Health source seeds.
+- Updated Tavily research to extract registry seed URLs before search-result URLs.
+- Kept facts live: the registry stores source URLs and field hints, not claims.
+- Updated status routing so grounded accounts with `fit_score >= 60` enter Slack review.
+- Added regression tests for source seeding and review routing.
+
+Architecture note:
+
+This is a better pattern than hardcoding company facts. The system hardcodes where to look and what fields matter, while Tavily and CrewAI still read current public pages at runtime.
