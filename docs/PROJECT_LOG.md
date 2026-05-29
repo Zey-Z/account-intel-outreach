@@ -478,3 +478,31 @@ Progress completed:
 Architecture note:
 
 This is a better pattern than hardcoding company facts. The system hardcodes where to look and what fields matter, while Tavily and CrewAI still read current public pages at runtime.
+
+## 2026-05-29 - Local Live Smoke Test and Script Entry Hardening
+
+Decision:
+
+Use local latest code to run a real CrewAI/Tavily/OpenAI smoke test against the shared database when Render is still on an old deployment.
+
+Why:
+
+Render's dashboard requires account login, and `/runtime/status` showed the hosted service was still running an old commit. Local live testing let us verify the actual workflow logic without waiting on a manual cloud deploy.
+
+Plain English:
+
+The cloud copy was behind, so we tested the newest kitchen locally with the real ingredients: Neon, Tavily, OpenAI, and Slack. That tells us whether the recipe works before asking Render to serve it.
+
+Progress completed:
+
+- Installed missing local dependencies from `requirements.txt`, including CrewAI.
+- Fixed utility scripts so they can be run directly from the repo root without manually setting `PYTHONPATH`.
+- Added a regression test that imports each utility script without `PYTHONPATH`.
+- Ran a real Oscar Health workflow with `AGENT_RUNTIME=crewai` and `RESEARCH_MODE=tavily`.
+- Verified the result now reaches `sent_to_review` with 5 grounded findings, 1 analysis output, and 1 outreach draft.
+- Sent the reviewed run to Slack through `scripts/send_latest_slack_review.py`.
+- Confirmed Render is still deployed at old commit `4c772df`, while GitHub latest is `ca26b7c`.
+
+Architecture note:
+
+This confirms the source-seeding and review-routing logic works in the current code. The remaining gap is deployment state, not workflow logic.
