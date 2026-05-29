@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
 
 from account_intel.db import Database
 from account_intel.env import load_local_env
