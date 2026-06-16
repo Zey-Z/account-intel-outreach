@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>AI Account Intelligence CEO Brief</title>
+  <style>
+    :root { --ink:#15252B; --muted:#65767D; --line:#D7E0E2; --paper:#F7FAF8; --green:#2E7D62; --teal:#1F6F7A; --gold:#C9972D; --red:#B7584A; --blue:#315A8A; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family: Arial, Helvetica, sans-serif; }
+    .page { width:1056px; height:816px; padding:44px; box-sizing:border-box; margin:0 auto; }
+    .top { display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--muted); }
+    .pill { background:var(--green); color:white; border-radius:999px; padding:7px 13px; font-weight:700; letter-spacing:.08em; }
+    h1 { font-size:36px; margin:28px 0 12px; letter-spacing:-.02em; }
+    .lede { font-size:16px; line-height:1.45; color:var(--muted); max-width:930px; }
+    .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:28px 0 24px; }
+    .kpi, .card, .node { background:white; border:1px solid var(--line); border-radius:12px; }
+    .kpi { padding:14px 16px; }
+    .kpi b { display:block; font-size:20px; margin-bottom:5px; }
+    .kpi span { color:var(--muted); font-size:12px; }
+    .flow-head { display:flex; gap:18px; align-items:baseline; margin-bottom:12px; }
+    .flow-head h2 { margin:0; font-size:19px; }
+    .flow-head p { margin:0; color:var(--muted); font-size:13px; }
+    .flow { display:grid; grid-template-columns:repeat(6,1fr); gap:14px; position:relative; }
+    .node { min-height:72px; padding:12px; position:relative; }
+    .node:not(:last-child)::after { content:""; position:absolute; right:-12px; top:35px; width:10px; border-top:2px solid #8FA1A6; }
+    .node b { display:block; font-size:13px; margin-bottom:6px; }
+    .node span { color:var(--muted); font-size:11px; line-height:1.25; }
+    .node.green { border-color:var(--green); } .node.teal { border-color:var(--teal); } .node.gold { border-color:var(--gold); } .node.blue { border-color:var(--blue); } .node.red { border-color:var(--red); }
+    .cards { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:34px; }
+    .card { padding:18px; min-height:148px; border-top:9px solid var(--green); }
+    .card:nth-child(2) { border-top-color:var(--teal); } .card:nth-child(3) { border-top-color:var(--gold); }
+    .card h3 { margin:0 0 12px; font-size:16px; }
+    .card p { margin:0; color:var(--muted); font-size:13px; line-height:1.45; }
+    .footer { display:flex; justify-content:space-between; border-top:1px solid var(--line); margin-top:28px; padding-top:12px; color:var(--muted); font-size:11px; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="top"><div class="pill">EXECUTIVE BRIEF</div><div>Portfolio AI Agent System | Demo-validated</div></div>
+    <h1>AI Account Intelligence & Outreach Ops System</h1>
+    <p class="lede">A human-approved multi-agent workflow that researches target accounts, scores ICP fit, drafts source-grounded outreach, and routes qualified cases to Slack review before CRM sync. It shows how AI agents can improve a business workflow without removing human judgment.</p>
+    <section class="kpis">
+      <div class="kpi"><b>3-agent crew</b><span>Researcher / Analyst / Writer</span></div>
+      <div class="kpi"><b>5 grounded findings</b><span>Latest Render smoke test</span></div>
+      <div class="kpi"><b>65 fit score</b><span>Qualified for review</span></div>
+      <div class="kpi"><b>23.4s latency</b><span>Live CrewAI + Tavily run</span></div>
+    </section>
+    <div class="flow-head"><h2>User Flow</h2><p>The system behaves like an AI research desk with a human approval counter.</p></div>
+    <section class="flow">
+      <div class="node green"><b>Zapier Input</b><span>Company + domain + ICP profile</span></div>
+      <div class="node teal"><b>Researcher</b><span>Reads public sources and stores evidence</span></div>
+      <div class="node gold"><b>Analyst</b><span>Scores fit and explains the why</span></div>
+      <div class="node blue"><b>Writer</b><span>Drafts outreach, never sends</span></div>
+      <div class="node red"><b>Slack Review</b><span>Approve, reject, or revise</span></div>
+      <div class="node green"><b>CRM / BI</b><span>Approved records and reporting</span></div>
+    </section>
+    <section class="cards">
+      <div class="card"><h3>Product Spec</h3><p><b>Input:</b> target company list and ICP profile.<br><b>Core:</b> CrewAI sequential agents, Tavily source extraction, validation harness, PostgreSQL state.<br><b>Output:</b> structured JSON, fit rationale, outreach draft, status history, and reviewable Slack card.</p></div>
+      <div class="card"><h3>Why It Matters</h3><p>Teams lose hours researching accounts, judging fit, and writing first drafts. This system turns that manual loop into a governed workflow: faster research, clearer evidence, reusable ICP logic, and human approval before action.</p></div>
+      <div class="card"><h3>Control Model</h3><p>The AI is not allowed to become an unsupervised sales bot. It uses public company data only, keeps source URLs, logs every run, flags uncertainty, and sends qualified drafts to human review before any CRM movement.</p></div>
+    </section>
+    <div class="footer"><span>Current proof: Render live run reached sent_to_review with source-grounded evidence and Slack review delivery.</span><span>Public company data only | Not HIPAA / not clinical / not auto-send</span></div>
+  </main>
+</body>
+</html>
