@@ -17,3 +17,21 @@ companies:
       min_fit_score: 60
       must_route_to: sent_to_review
       required_terms: [claims, support, workflow]
+  - name: ClaimsBridge Health
+    domain: claimsbridge.example
+    expected:
+      min_fit_score: 60
+      must_route_to: sent_to_review
+      required_terms: [claims, payer, workflow]
+  - name: MemberLoop Care
+    domain: memberloop.example
+    expected:
+      min_fit_score: 60
+      must_route_to: sent_to_review
+      required_terms: [member, support, operations]
+  - name: PriorAuth Works
+    domain: priorauth.example
+    expected:
+      min_fit_score: 60
+      must_route_to: sent_to_review
+      required_terms: [claims, automation, operations]

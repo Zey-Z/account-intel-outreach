@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import json
+import os
 import time
+from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 from account_intel.grounding import ground_findings
+from account_intel.knowledge import load_knowledge_snippets
 from account_intel.models import (
     AnalystRationale,
     CrewResult,
@@ -92,11 +95,13 @@ class CrewAIAccountRuntime:
         crewai_module: Any | None = None,
         llm: Any | None = None,
         verbose: bool = False,
+        knowledge_base_path: Path | str | None = None,
     ):
         self.research_client = research_client or OfflineResearchClient()
         self.crewai = crewai_module or self._load_crewai_module()
         self.llm = llm
         self.verbose = verbose
+        self.knowledge_base_path = Path(knowledge_base_path or os.getenv("KNOWLEDGE_BASE_PATH", "knowledge_base"))
 
     def run_company(self, company_name: str, domain: str | None, profile: ICPProfile) -> CrewResult:
         started = time.perf_counter()
@@ -230,6 +235,7 @@ class CrewAIAccountRuntime:
                 "Set review_flag to needs_human_review when confidence is low or evidence is thin. "
                 "needs_human_review is not a failure; it means the draft should still go to Slack for a person to review "
                 "when the account is source-grounded and ICP fit is strong enough."
+                f"{self._writer_guidance_block()}"
             ),
             expected_output="Structured outreach draft with subject, body, confidence, review_flag, and evidence_refs.",
             agent=writer,
@@ -237,6 +243,16 @@ class CrewAIAccountRuntime:
             output_pydantic=CrewAIOutreachOutput,
         )
         return research_task, analysis_task, writer_task
+
+    def _writer_guidance_block(self) -> str:
+        snippets = load_knowledge_snippets(self.knowledge_base_path)
+        if not snippets:
+            return ""
+        return (
+            "\n\nApproved messaging guidance (tone and positioning only - never a source of facts; "
+            "facts must come from Researcher findings):\n"
+            f"{snippets}"
+        )
 
     @staticmethod
     def _research_from_task(

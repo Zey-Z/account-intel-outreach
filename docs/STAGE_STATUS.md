@@ -21,7 +21,8 @@
 - API retry endpoint for failed runs.
 - Company-level worker failure isolation.
 - Optional in-process worker poller for demo/internal processing.
-- Eval runner.
+- Eval runner with 6-company fixture set and per-company grounding rate.
+- CrewAI Writer knowledge guidance from approved messaging files.
 - BI-ready SQL views.
 - Human-readable run report script.
 - Integration boundary tests for Slack signature verification and HubSpot note

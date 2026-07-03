@@ -1,4 +1,5 @@
 import sys
+import tempfile
 import types
 import unittest
 from pathlib import Path
@@ -132,6 +133,40 @@ class CrewAIRuntimeTests(unittest.TestCase):
         self.assertEqual(result.draft.subject, "CrewAI generated subject")
         self.assertEqual(result.status, "sent_to_review")
         self.assertEqual(result.token_estimate, 321)
+
+    def test_crewai_writer_task_includes_knowledge_guidance_as_non_fact_source(self):
+        from account_intel.config import load_icp_profiles
+        from account_intel.crewai_runtime import CrewAIAccountRuntime
+        from account_intel.research_tools import OfflineResearchClient
+
+        with tempfile.TemporaryDirectory() as tmp:
+            knowledge_dir = Path(tmp)
+            (knowledge_dir / "approved_messaging.md").write_text(
+                "Use audit-friendly workflow automation language.",
+                encoding="utf-8",
+            )
+            (knowledge_dir / "product_positioning.md").write_text(
+                "This is not a cold-email sender.",
+                encoding="utf-8",
+            )
+            (knowledge_dir / "objection_handling.md").write_text(
+                "Point to source evidence and human approval.",
+                encoding="utf-8",
+            )
+            profile = load_icp_profiles(Path("icp_profiles.yaml"))["healthcare_insurance_ops"]
+            runtime = CrewAIAccountRuntime(
+                research_client=OfflineResearchClient(),
+                crewai_module=FakeCrewAIModule,
+                knowledge_base_path=knowledge_dir,
+            )
+
+            runtime.run_company("Northstar Health", "northstar.example", profile)
+
+        writer_description = FakeCrewAIModule.created_tasks[2].kwargs["description"]
+        self.assertIn("Approved messaging guidance", writer_description)
+        self.assertIn("never a source of facts", writer_description)
+        self.assertIn("audit-friendly workflow automation", writer_description)
+        self.assertIn("not a cold-email sender", writer_description)
 
     def test_account_intelligence_crew_routes_to_crewai_runtime_when_selected(self):
         from account_intel.config import load_icp_profiles

@@ -51,9 +51,11 @@ def main() -> None:
     print(f"rubric_failed={rubric_failed}")
     for result in rubric_results:
         outcome = "PASS" if result["passed"] else "FAIL"
+        actual = actuals.get(result["company"], {})
         print(
             f"- {result['company']}: {outcome} "
-            f"fit_score={result['fit_score']} status={result['status']}"
+            f"fit_score={result['fit_score']} status={result['status']} "
+            f"grounding_rate={actual.get('grounding_rate', 0):.2f}"
         )
         for failure in result["failures"]:
             print(f"  - {failure}")
@@ -107,10 +109,12 @@ def load_company_actuals(db: Database, run_id: str) -> dict[str, dict]:
                 (company_id,),
             ).fetchone()
             findings = conn.execute(
-                "SELECT claim FROM research_findings WHERE company_id = ?",
+                "SELECT claim, grounding_passed FROM research_findings WHERE company_id = ?",
                 (company_id,),
             ).fetchall()
         text_parts = [row["claim"] for row in findings]
+        finding_count = len(findings)
+        grounded_count = sum(1 for row in findings if bool(row["grounding_passed"]))
         if analysis:
             text_parts.extend(
                 [
@@ -126,6 +130,7 @@ def load_company_actuals(db: Database, run_id: str) -> dict[str, dict]:
             "fit_score": analysis["fit_score"] if analysis else 0,
             "status": draft["status"] if draft else "missing",
             "text": " ".join(part for part in text_parts if part),
+            "grounding_rate": grounded_count / finding_count if finding_count else 0,
         }
     return actuals
 

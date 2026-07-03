@@ -606,3 +606,26 @@ Progress completed:
 Architecture note:
 
 This is not a production queue. It is a lightweight demo/internal-pilot runner. A production queue would still need atomic job claiming, worker supervision, backoff, and concurrency control.
+
+## 2026-07-03 - Eval Grounding Rates and Writer Knowledge Guidance
+
+Decision:
+
+Extend the offline eval set and feed lightweight approved messaging guidance into only the CrewAI Writer task.
+
+Why:
+
+The eval report needed a clearer quality signal than pass/fail, and the real CrewAI writer needed reusable positioning guidance without letting internal playbooks become target-company facts.
+
+Plain English:
+
+The test bench now has more sample companies and reports how much of each company's output is backed by sources. The writer also gets a short style card, like "say this kind of thing, avoid that kind of claim," but it still must get facts from research evidence.
+
+Progress completed:
+
+- Expanded `eval/test_companies.yaml` from 3 to 6 companies.
+- Added per-company `grounding_rate` to eval actuals and printed reports.
+- Added `src/account_intel/knowledge.py` for capped knowledge snippet loading.
+- CrewAI Writer task now appends approved messaging guidance from `KNOWLEDGE_BASE_PATH`.
+- Deterministic runtime remains unchanged.
+- Added tests for knowledge loading, writer prompt guidance, and eval grounding rates.
