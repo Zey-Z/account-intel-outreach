@@ -77,6 +77,22 @@ try:
         db = get_db()
         return {"run": db.get_run(run_id), "events": db.list_events(run_id)}
 
+    @app.post("/runs/{run_id}/retry")
+    async def retry_run(run_id: str, x_api_key: str | None = Header(default=None)) -> dict[str, str]:
+        require_api_key(x_api_key)
+        db = get_db()
+        try:
+            run = db.get_run(run_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="Run not found.") from None
+        if run["status"] != "failed":
+            raise HTTPException(status_code=409, detail="Only failed runs can be retried.")
+        if int(run["retry_count"]) >= 3:
+            raise HTTPException(status_code=409, detail="Run has reached the retry limit.")
+        db.requeue_run(run_id)
+        db.log_event(run_id, "run_requeued", {"retry_count": run["retry_count"]})
+        return {"run_id": run_id, "status": "queued"}
+
     @app.get("/runtime/status")
     async def runtime_status(x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
         from account_intel.crewai_runtime import crewai_dependency_available

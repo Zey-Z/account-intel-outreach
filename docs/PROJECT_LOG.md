@@ -557,3 +557,26 @@ Progress completed:
 - Failed sync leaves the draft `approved`, logs `crm_sync_failed`, and does not break the Slack interaction.
 - Added idempotent `POST /crm/sync-approved` for approved drafts that still need CRM sync.
 - Added tests using a fake HubSpot client, with no network calls.
+
+## 2026-07-03 - Retry and Company-Level Failure Isolation
+
+Decision:
+
+Add a retry endpoint for failed runs and isolate worker errors at the company level.
+
+Why:
+
+One failing company should not destroy the whole batch. At the same time, a run that truly fails should have a controlled way to return to the queue instead of requiring manual database edits.
+
+Plain English:
+
+If one folder in a stack is messy, keep processing the other folders and mark the messy one for follow-up. If the whole stack fails, put the stack back on the work tray only a limited number of times.
+
+Progress completed:
+
+- Added `POST /runs/{run_id}/retry`, protected by `X-API-Key`.
+- Failed runs can be requeued while `retry_count < 3`; invalid retries return HTTP 409.
+- Added `run_requeued` event logging.
+- Worker now logs `company_failed` and continues when one company fails.
+- A run still becomes `failed` when every company fails.
+- Added tests for partial failure, total failure, retry success, and retry rejection.

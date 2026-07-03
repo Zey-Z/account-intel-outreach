@@ -64,6 +64,78 @@ class WorkerAndApiTests(unittest.TestCase):
                 2,
             )
 
+    def test_worker_continues_when_one_company_fails(self):
+        from account_intel.db import Database
+        from account_intel.worker import Worker
+
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Database(f"sqlite:///{Path(tmp) / 'workflow.db'}")
+            db.initialize()
+            run_id = db.create_run(
+                triggered_by="unit-test",
+                icp_profile="healthcare_insurance_ops",
+                companies=[
+                    {"name": "Broken Health", "domain": "broken.example"},
+                    {"name": "Northstar Health", "domain": "northstar.example"},
+                ],
+            )
+            worker = Worker(db=db, offline=True)
+            real_crew = worker.crew
+
+            class PartiallyFailingCrew:
+                def run_company(self, name, domain, profile):
+                    if name == "Broken Health":
+                        raise RuntimeError("research timeout")
+                    return real_crew.run_company(name, domain, profile)
+
+            worker.crew = PartiallyFailingCrew()
+            worker.process_next()
+
+            run = db.get_run(run_id)
+            drafts = db.list_outreach_drafts(run_id)
+            events = db.list_events(run_id)
+
+        self.assertNotEqual(run["status"], "failed")
+        self.assertEqual(len(drafts), 1)
+        self.assertEqual(
+            len([event for event in events if event["event_type"] == "company_failed"]),
+            1,
+        )
+        self.assertEqual(
+            len([event for event in events if event["event_type"] == "company_processed"]),
+            1,
+        )
+
+    def test_worker_marks_run_failed_when_all_companies_fail(self):
+        from account_intel.db import Database
+        from account_intel.worker import Worker
+
+        class AlwaysFailingCrew:
+            def run_company(self, name, domain, profile):
+                raise RuntimeError("all sources failed")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Database(f"sqlite:///{Path(tmp) / 'workflow.db'}")
+            db.initialize()
+            run_id = db.create_run(
+                triggered_by="unit-test",
+                icp_profile="healthcare_insurance_ops",
+                companies=[{"name": "Broken Health", "domain": "broken.example"}],
+            )
+            worker = Worker(db=db, offline=True)
+            worker.crew = AlwaysFailingCrew()
+
+            with self.assertRaises(RuntimeError):
+                worker.process_next()
+
+            run = db.get_run(run_id)
+            events = db.list_events(run_id)
+
+        self.assertEqual(run["status"], "failed")
+        self.assertEqual(run["retry_count"], 1)
+        self.assertTrue(any(event["event_type"] == "company_failed" for event in events))
+        self.assertTrue(any(event["event_type"] == "worker_failed" for event in events))
+
     def test_request_changes_rewrites_once_and_returns_to_review(self):
         from account_intel.db import Database
         from account_intel.worker import Worker

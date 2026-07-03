@@ -38,8 +38,24 @@ class Worker:
         self.db.log_event(run_id, "worker_started", {"icp_profile": profile.key})
         try:
             final_status = "archived"
+            successful_companies = 0
+            last_company_error: Exception | None = None
             for company in self.db.list_companies(run_id):
-                result = self.crew.run_company(company["name"], company["domain"], profile)
+                try:
+                    result = self.crew.run_company(company["name"], company["domain"], profile)
+                except Exception as exc:
+                    last_company_error = exc
+                    self.db.log_event(
+                        run_id,
+                        "company_failed",
+                        {
+                            "company": company["name"],
+                            "domain": company["domain"],
+                            "error": str(exc),
+                        },
+                        company_id=company["company_id"],
+                    )
+                    continue
                 finding_ids = self.db.save_research_findings(
                     company["company_id"],
                     [finding.to_dict() for finding in result.research.findings],
@@ -63,7 +79,10 @@ class Worker:
                     },
                     company_id=company["company_id"],
                 )
+                successful_companies += 1
                 final_status = self._dominant_status(final_status, result.status)
+            if successful_companies == 0:
+                raise RuntimeError(str(last_company_error) if last_company_error else "No companies were processed.")
             self.db.update_run_status(run_id, final_status)
             self.db.log_event(run_id, "worker_completed", {"status": final_status})
             return run_id

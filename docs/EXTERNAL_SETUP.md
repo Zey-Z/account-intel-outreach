@@ -48,6 +48,15 @@ POST https://<render-url>/crm/sync-approved
 Header: X-API-Key: <ACCOUNT_INTEL_API_KEY>
 ```
 
+## Run Recovery
+
+If a run fails and `retry_count` is still below 3, requeue it:
+
+```text
+POST https://<render-url>/runs/<run_id>/retry
+Header: X-API-Key: <ACCOUNT_INTEL_API_KEY>
+```
+
 ## Power BI
 
 Connect Power BI Desktop to the PostgreSQL database or export SQLite data to CSV

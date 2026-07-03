@@ -157,6 +157,60 @@ class ApiLatestRunTests(unittest.TestCase):
         self.assertEqual(response, {"synced": ["draft_1"], "failed": ["draft_2"]})
         self.assertEqual(calls, ["sync-called"])
 
+    def test_retry_failed_run_requeues_and_logs_event(self):
+        from account_intel.db import Database
+
+        with tempfile.TemporaryDirectory() as tmp:
+            main.DATABASE_URL = f"sqlite:///{Path(tmp) / 'api.db'}"
+            main.API_KEY = "test-secret"
+            db = Database(main.DATABASE_URL)
+            db.initialize()
+            run_id = db.create_run(
+                triggered_by="unit-test",
+                icp_profile="healthcare_insurance_ops",
+                companies=[{"name": "Northstar Health", "domain": "northstar.example"}],
+            )
+            db.update_run_status(run_id, "failed")
+
+            response = asyncio.run(main.retry_run(run_id, x_api_key="test-secret"))
+            run = db.get_run(run_id)
+            events = db.list_events(run_id)
+
+        self.assertEqual(response, {"run_id": run_id, "status": "queued"})
+        self.assertEqual(run["status"], "queued")
+        self.assertTrue(any(event["event_type"] == "run_requeued" for event in events))
+
+    def test_retry_run_rejects_non_failed_or_exhausted_runs(self):
+        from account_intel.db import Database
+
+        with tempfile.TemporaryDirectory() as tmp:
+            main.DATABASE_URL = f"sqlite:///{Path(tmp) / 'api.db'}"
+            main.API_KEY = "test-secret"
+            db = Database(main.DATABASE_URL)
+            db.initialize()
+            queued_run_id = db.create_run(
+                triggered_by="unit-test",
+                icp_profile="healthcare_insurance_ops",
+                companies=[{"name": "Northstar Health", "domain": "northstar.example"}],
+            )
+            exhausted_run_id = db.create_run(
+                triggered_by="unit-test",
+                icp_profile="healthcare_insurance_ops",
+                companies=[{"name": "PayerOps Cloud", "domain": "payerops.example"}],
+            )
+            db.update_run_status(exhausted_run_id, "failed")
+            db.increment_retry(exhausted_run_id)
+            db.increment_retry(exhausted_run_id)
+            db.increment_retry(exhausted_run_id)
+
+            with self.assertRaises(main.HTTPException) as queued_error:
+                asyncio.run(main.retry_run(queued_run_id, x_api_key="test-secret"))
+            with self.assertRaises(main.HTTPException) as exhausted_error:
+                asyncio.run(main.retry_run(exhausted_run_id, x_api_key="test-secret"))
+
+        self.assertEqual(queued_error.exception.status_code, 409)
+        self.assertEqual(exhausted_error.exception.status_code, 409)
+
     def test_send_latest_slack_review_posts_latest_report_message(self):
         from account_intel.db import Database
         from account_intel.worker import Worker

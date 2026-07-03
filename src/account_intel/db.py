@@ -269,6 +269,10 @@ class Database:
         with self.connect() as conn:
             conn.execute("UPDATE runs SET retry_count = retry_count + 1 WHERE run_id = ?", (run_id,))
 
+    def requeue_run(self, run_id: str) -> None:
+        with self.connect() as conn:
+            conn.execute("UPDATE runs SET status = 'queued', finished_at = NULL WHERE run_id = ?", (run_id,))
+
     def list_companies(self, run_id: str) -> list[dict[str, Any]]:
         with self.connect() as conn:
             rows = conn.execute("SELECT * FROM companies WHERE run_id = ?", (run_id,)).fetchall()
