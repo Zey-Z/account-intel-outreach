@@ -14,12 +14,16 @@ class ApiLatestRunTests(unittest.TestCase):
         self.original_database_url = main.DATABASE_URL
         self.original_api_key = main.API_KEY
         main.API_KEY = ""
+        if hasattr(main, "reset_db_singleton"):
+            main.reset_db_singleton()
 
     def tearDown(self):
         main.DATABASE_URL = self.original_database_url
         main.API_KEY = self.original_api_key
         if hasattr(main, "_WORKER_POLL_TASK"):
             main._WORKER_POLL_TASK = None
+        if hasattr(main, "reset_db_singleton"):
+            main.reset_db_singleton()
 
     def test_get_latest_run_returns_most_recent_run_report(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -39,6 +43,19 @@ class ApiLatestRunTests(unittest.TestCase):
 
         self.assertEqual(latest["run"]["run_id"], created["run_id"])
         self.assertEqual(latest["run"]["status"], "queued")
+
+    def test_get_db_reuses_singleton_until_reset(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            main.DATABASE_URL = f"sqlite:///{Path(tmp) / 'api.db'}"
+            main.reset_db_singleton()
+
+            first = main.get_db()
+            second = main.get_db()
+            main.reset_db_singleton()
+            third = main.get_db()
+
+        self.assertIs(first, second)
+        self.assertIsNot(first, third)
 
     def test_create_run_rejects_missing_api_key_when_configured(self):
         main.API_KEY = "test-secret"
@@ -103,6 +120,37 @@ class ApiLatestRunTests(unittest.TestCase):
         self.assertTrue(response["tavily_api_key_configured"])
         self.assertEqual(response["render_git_commit"], "abc123")
         self.assertNotIn("test-openai-key", str(response))
+
+    def test_report_csv_endpoint_returns_whitelisted_view_as_csv(self):
+        from account_intel.db import Database
+        from account_intel.worker import Worker
+
+        with tempfile.TemporaryDirectory() as tmp:
+            main.DATABASE_URL = f"sqlite:///{Path(tmp) / 'api.db'}"
+            main.API_KEY = "test-secret"
+            db = Database(main.DATABASE_URL)
+            db.initialize()
+            db.create_run(
+                triggered_by="unit-test",
+                icp_profile="healthcare_insurance_ops",
+                companies=[{"name": "Northstar Health", "domain": "northstar.example"}],
+            )
+            Worker(db=db, offline=True).process_next()
+
+            response = asyncio.run(main.get_report_csv("lead_runs_view", x_api_key="test-secret"))
+
+        body = response.body.decode("utf-8")
+        self.assertEqual(response.media_type, "text/csv")
+        self.assertIn("run_id,icp_profile,status", body)
+        self.assertIn("healthcare_insurance_ops", body)
+
+    def test_report_csv_endpoint_rejects_non_whitelisted_view(self):
+        main.API_KEY = "test-secret"
+
+        with self.assertRaises(main.HTTPException) as caught:
+            asyncio.run(main.get_report_csv("runs", x_api_key="test-secret"))
+
+        self.assertEqual(caught.exception.status_code, 404)
 
     def test_worker_endpoint_rejects_missing_api_key_when_configured(self):
         main.API_KEY = "test-secret"

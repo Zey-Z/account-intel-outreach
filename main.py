@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import csv
+import io
 import json
 import hmac
 import os
@@ -24,17 +26,34 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/account_intel.db")
 ICP_PATH = Path(os.getenv("ICP_PROFILES_PATH", "icp_profiles.yaml"))
 API_KEY = os.getenv("ACCOUNT_INTEL_API_KEY", "")
 _WORKER_POLL_TASK: asyncio.Task[Any] | None = None
+_DB_INSTANCE: Database | None = None
+_DB_INSTANCE_URL = ""
+REPORT_VIEW_WHITELIST = {
+    "lead_runs_view",
+    "outreach_performance_view",
+    "agent_quality_view",
+    "cost_latency_view",
+}
 
 
 def get_db() -> Database:
-    db = Database(DATABASE_URL)
-    db.initialize()
-    return db
+    global _DB_INSTANCE, _DB_INSTANCE_URL
+    if _DB_INSTANCE is None or _DB_INSTANCE_URL != DATABASE_URL:
+        _DB_INSTANCE = Database(DATABASE_URL)
+        _DB_INSTANCE.initialize()
+        _DB_INSTANCE_URL = DATABASE_URL
+    return _DB_INSTANCE
+
+
+def reset_db_singleton() -> None:
+    global _DB_INSTANCE, _DB_INSTANCE_URL
+    _DB_INSTANCE = None
+    _DB_INSTANCE_URL = ""
 
 
 try:
     from fastapi import FastAPI, Header, HTTPException, Request
-    from fastapi.responses import JSONResponse
+    from fastapi.responses import JSONResponse, Response
 
     app = FastAPI(title="AI Account Intelligence & Outreach Ops System")
 
@@ -139,6 +158,22 @@ try:
             "tavily_api_key_configured": bool(os.getenv("TAVILY_API_KEY")),
             "render_git_commit": os.getenv("RENDER_GIT_COMMIT", ""),
         }
+
+    @app.get("/reports/{view_name}.csv")
+    async def get_report_csv(view_name: str, x_api_key: str | None = Header(default=None)) -> Response:
+        require_api_key(x_api_key)
+        if view_name not in REPORT_VIEW_WHITELIST:
+            raise HTTPException(status_code=404, detail="Report view not found.")
+        db = get_db()
+        with db.connect() as conn:
+            rows = conn.execute(f"SELECT * FROM {view_name}").fetchall()
+        output = io.StringIO()
+        fieldnames = list(rows[0].keys()) if rows else _empty_report_headers(view_name)
+        writer = csv.DictWriter(output, fieldnames=fieldnames, lineterminator="\n")
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(dict(row))
+        return Response(content=output.getvalue(), media_type="text/csv")
 
     @app.post("/worker/process-next")
     async def process_next(x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
@@ -283,3 +318,44 @@ def _slack_message_ts(payload: dict[str, Any]) -> str | None:
     message = payload.get("message") or {}
     container = payload.get("container") or {}
     return message.get("ts") or container.get("message_ts")
+
+
+def _empty_report_headers(view_name: str) -> list[str]:
+    headers = {
+        "lead_runs_view": [
+            "run_id",
+            "icp_profile",
+            "status",
+            "company_count",
+            "retry_count",
+            "average_fit_score",
+            "grounding_rate",
+        ],
+        "outreach_performance_view": [
+            "status",
+            "review_flag",
+            "draft_count",
+            "average_confidence",
+        ],
+        "agent_quality_view": [
+            "run_id",
+            "icp_profile",
+            "company_count",
+            "finding_count",
+            "grounded_finding_count",
+            "grounding_rate",
+            "average_analysis_confidence",
+            "average_draft_confidence",
+            "ready_for_review_count",
+            "needs_human_review_count",
+        ],
+        "cost_latency_view": [
+            "run_id",
+            "icp_profile",
+            "event_count",
+            "token_estimate",
+            "average_latency_ms",
+            "failure_event_count",
+        ],
+    }
+    return headers[view_name]

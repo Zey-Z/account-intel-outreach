@@ -629,3 +629,26 @@ Progress completed:
 - CrewAI Writer task now appends approved messaging guidance from `KNOWLEDGE_BASE_PATH`.
 - Deterministic runtime remains unchanged.
 - Added tests for knowledge loading, writer prompt guidance, and eval grounding rates.
+
+## 2026-07-03 - CSV Reporting Endpoint and Runtime Hardening
+
+Decision:
+
+Expose BI-ready views as API-key-protected CSV endpoints, reuse a lazy database singleton in `main.py`, and pin Python dependencies to exact installed versions.
+
+Why:
+
+Power BI should be able to read reporting views without direct database access, and the API should not recreate the database wrapper for every request. Exact dependency pins also make local, Render, and reviewer environments more predictable.
+
+Plain English:
+
+The reporting layer now has a clean export window. Power BI can ask the service for a CSV report, the service checks the API key, then returns only one of the approved report views. The API also keeps one database handle ready instead of rebuilding it over and over.
+
+Progress completed:
+
+- Added `GET /reports/{view_name}.csv` with a strict 4-view whitelist.
+- CSV responses include header rows, even when a view has no data.
+- Added `reset_db_singleton()` so tests can reset the lazy database instance.
+- Pinned all packages in `requirements.txt` to currently installed versions.
+- Documented Power BI Web CSV setup with `X-API-Key`.
+- Added tests for CSV export, whitelist rejection, and database singleton reuse.

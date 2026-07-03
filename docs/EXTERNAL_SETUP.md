@@ -64,3 +64,16 @@ for the first demo. Use:
 
 - `lead_runs_view`
 - `outreach_performance_view`
+
+Or use the API CSV endpoints:
+
+```text
+GET https://<render-url>/reports/lead_runs_view.csv
+GET https://<render-url>/reports/outreach_performance_view.csv
+GET https://<render-url>/reports/agent_quality_view.csv
+GET https://<render-url>/reports/cost_latency_view.csv
+Header: X-API-Key: <ACCOUNT_INTEL_API_KEY>
+```
+
+In Power BI Desktop: Get Data -> Web -> Advanced -> paste the CSV URL and add
+the `X-API-Key` request header.

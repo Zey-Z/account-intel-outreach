@@ -67,8 +67,11 @@ Implemented:
 - Worker that processes queued runs.
 - FastAPI endpoint definitions.
 - Live Slack human-review workflow.
-- HubSpot integration boundary.
+- Approved-only HubSpot note sync path.
+- Retry endpoint and company-level failure isolation.
+- Optional in-process worker poller for demo/internal processing.
 - Eval runner and BI-ready views.
+- API-key-protected CSV reporting endpoints.
 - Human-readable run report script.
 
 Next manual setup:
@@ -86,10 +89,11 @@ when you are ready to replace the offline fixture with live CrewAI and Tavily.
 
 Safe claim after full setup:
 
-> Built a CrewAI-style account intelligence workflow that researches healthcare
+> Built a CrewAI-based account intelligence workflow that researches healthcare
 > and insurance target accounts, scores ICP fit using configurable profiles,
 > drafts source-grounded outreach, routes drafts through human approval, stores
-> run state in PostgreSQL-shaped tables, and exposes BI-ready reporting views.
+> run state in PostgreSQL-shaped tables, syncs approved drafts to HubSpot notes,
+> and exposes BI-ready reporting views and CSV exports.
 
 Do not claim production rollout, HIPAA compliance, clinical validation, patient
 impact, or automated email sending.
