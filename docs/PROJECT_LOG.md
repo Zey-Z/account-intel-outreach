@@ -506,3 +506,32 @@ Progress completed:
 Architecture note:
 
 This confirms the source-seeding and review-routing logic works in the current code. The remaining gap is deployment state, not workflow logic.
+
+## 2026-07-03 - Completion Phase Design Decisions
+
+Decision:
+
+Fix the design for the remaining work as eight decisions (D1-D8) and delegate implementation to a coding agent working from `docs/CODEX_PLAN_PROMPT.md`.
+
+Why:
+
+An architecture audit found the workflow core healthy (43 tests passing, live CrewAI/Tavily/Slack round-trip verified) but with one dead-end feature and several operational gaps. Deciding the design up front keeps the coding agent from redesigning working boundaries.
+
+Plain English:
+
+The blueprint is finished; a builder now follows it room by room.
+
+Decisions:
+
+- D1: Sync approved drafts to HubSpot as notes inside `apply_review_decision`, with a `synced_to_crm` status, `crm_synced`/`crm_sync_failed` events, an idempotent `POST /crm/sync-approved` catch-up endpoint, and graceful no-token behavior. Sync failure never breaks the Slack response.
+- D2: Optional in-process worker poller controlled by `WORKER_POLL_SECONDS` (default off), instead of a paid Render cron service.
+- D3: `POST /runs/{run_id}/retry` requeues failed runs, capped at 3 attempts.
+- D4: Per-company failure isolation in the worker loop; a run only fails when every company fails.
+- D5: Eval gains 3+ companies and per-company grounding rate, still offline by default.
+- D6: `knowledge_base/` messaging docs feed the CrewAI writer prompt as tone/positioning guidance only, capped at 1500 characters; facts still come only from grounded findings.
+- D7: BI views exposed as API-key-protected CSV endpoints for Power BI, avoiding a database connector dependency.
+- D8: Pin dependency versions; cache the Database instance in `main.py`.
+
+Out of scope for the coding agent:
+
+Render redeploy, env var flips, and all dashboard/secret setup stay manual owner steps.
