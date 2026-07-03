@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import hmac
 import os
@@ -22,6 +23,7 @@ load_local_env(ROOT / ".env")
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/account_intel.db")
 ICP_PATH = Path(os.getenv("ICP_PROFILES_PATH", "icp_profiles.yaml"))
 API_KEY = os.getenv("ACCOUNT_INTEL_API_KEY", "")
+_WORKER_POLL_TASK: asyncio.Task[Any] | None = None
 
 
 def get_db() -> Database:
@@ -35,6 +37,37 @@ try:
     from fastapi.responses import JSONResponse
 
     app = FastAPI(title="AI Account Intelligence & Outreach Ops System")
+
+    def worker_poll_seconds() -> int:
+        raw_value = os.getenv("WORKER_POLL_SECONDS", "0").strip()
+        try:
+            seconds = int(raw_value)
+        except ValueError:
+            return 0
+        return seconds if seconds > 0 else 0
+
+    async def worker_poll_once() -> str | None:
+        db = get_db()
+        worker = Worker(db=db, icp_path=ICP_PATH)
+        return await to_thread(worker.process_next)
+
+    async def worker_poll_loop(seconds: int) -> None:
+        while True:
+            try:
+                await worker_poll_once()
+            except Exception as exc:
+                print(f"worker poll failed: {exc}", flush=True)
+            await asyncio.sleep(seconds)
+
+    @app.on_event("startup")
+    async def start_worker_poller() -> None:
+        global _WORKER_POLL_TASK
+        seconds = worker_poll_seconds()
+        if seconds <= 0:
+            return
+        if _WORKER_POLL_TASK is not None and not _WORKER_POLL_TASK.done():
+            return
+        _WORKER_POLL_TASK = asyncio.create_task(worker_poll_loop(seconds))
 
     def require_api_key(x_api_key: str | None) -> None:
         if not API_KEY:

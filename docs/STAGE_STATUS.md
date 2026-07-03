@@ -20,6 +20,7 @@
 - Idempotent CRM catch-up endpoint for approved drafts.
 - API retry endpoint for failed runs.
 - Company-level worker failure isolation.
+- Optional in-process worker poller for demo/internal processing.
 - Eval runner.
 - BI-ready SQL views.
 - Human-readable run report script.

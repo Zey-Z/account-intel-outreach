@@ -580,3 +580,29 @@ Progress completed:
 - Worker now logs `company_failed` and continues when one company fails.
 - A run still becomes `failed` when every company fails.
 - Added tests for partial failure, total failure, retry success, and retry rejection.
+
+## 2026-07-03 - Optional In-Process Worker Poller
+
+Decision:
+
+Add an optional FastAPI startup poller controlled by `WORKER_POLL_SECONDS`.
+
+Why:
+
+The API already had a manual worker endpoint, but a demo or internal pilot should be able to process queued runs without someone pressing `/worker/process-next` each time. The poller stays off by default so tests and current deployments do not change behavior unless explicitly configured.
+
+Plain English:
+
+The service can now check its own inbox every few seconds. If there is a queued run, it processes it. If the inbox is empty, it quietly waits until the next check.
+
+Progress completed:
+
+- Added `worker_poll_once()` and `worker_poll_loop()` in `main.py`.
+- Added FastAPI startup hook `start_worker_poller()`.
+- `WORKER_POLL_SECONDS=0` or unset keeps the poller disabled.
+- Added `WORKER_POLL_SECONDS` to `.env.example` and `render.yaml`.
+- Added tests for disabled startup, enabled startup, and one poll iteration.
+
+Architecture note:
+
+This is not a production queue. It is a lightweight demo/internal-pilot runner. A production queue would still need atomic job claiming, worker supervision, backoff, and concurrency control.

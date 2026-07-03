@@ -18,6 +18,8 @@ class ApiLatestRunTests(unittest.TestCase):
     def tearDown(self):
         main.DATABASE_URL = self.original_database_url
         main.API_KEY = self.original_api_key
+        if hasattr(main, "_WORKER_POLL_TASK"):
+            main._WORKER_POLL_TASK = None
 
     def test_get_latest_run_returns_most_recent_run_report(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -131,6 +133,62 @@ class ApiLatestRunTests(unittest.TestCase):
                 response = asyncio.run(main.process_next())
 
         self.assertEqual(response, {"processed_run_id": "run_123"})
+        self.assertEqual(calls, ["to-thread-called", "worker-called"])
+
+    def test_worker_poller_startup_is_disabled_by_default(self):
+        calls = []
+
+        def fake_create_task(coro):
+            calls.append(coro)
+            coro.close()
+            return object()
+
+        with patch.dict(os.environ, {"WORKER_POLL_SECONDS": "0"}):
+            with patch("main.asyncio.create_task", fake_create_task):
+                asyncio.run(main.start_worker_poller())
+
+        self.assertEqual(calls, [])
+
+    def test_worker_poller_startup_schedules_background_task_when_enabled(self):
+        calls = []
+
+        class FakeTask:
+            def done(self):
+                return False
+
+        def fake_create_task(coro):
+            calls.append(coro)
+            coro.close()
+            return FakeTask()
+
+        with patch.dict(os.environ, {"WORKER_POLL_SECONDS": "5"}):
+            with patch("main.asyncio.create_task", fake_create_task):
+                asyncio.run(main.start_worker_poller())
+
+        self.assertEqual(len(calls), 1)
+        self.assertIsNotNone(main._WORKER_POLL_TASK)
+
+    def test_worker_poller_once_runs_worker_in_thread(self):
+        calls = []
+
+        class FakeWorker:
+            def __init__(self, db, icp_path):
+                self.db = db
+                self.icp_path = icp_path
+
+            def process_next(self):
+                calls.append("worker-called")
+                return None
+
+        async def fake_to_thread(func):
+            calls.append("to-thread-called")
+            return func()
+
+        with patch("main.Worker", FakeWorker):
+            with patch("main.to_thread", fake_to_thread):
+                result = asyncio.run(main.worker_poll_once())
+
+        self.assertIsNone(result)
         self.assertEqual(calls, ["to-thread-called", "worker-called"])
 
     def test_crm_sync_approved_endpoint_requires_api_key_and_returns_sync_result(self):

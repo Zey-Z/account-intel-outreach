@@ -32,3 +32,5 @@ services:
         sync: false
       - key: HUBSPOT_PRIVATE_APP_TOKEN
         sync: false
+      - key: WORKER_POLL_SECONDS
+        sync: false
