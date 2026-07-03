@@ -16,6 +16,8 @@
 - Zapier entry trigger path.
 - Live Slack human-review workflow.
 - HubSpot integration boundary.
+- Approved-only HubSpot note sync path.
+- Idempotent CRM catch-up endpoint for approved drafts.
 - Eval runner.
 - BI-ready SQL views.
 - Human-readable run report script.

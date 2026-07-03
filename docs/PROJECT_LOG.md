@@ -535,3 +535,25 @@ Decisions:
 Out of scope for the coding agent:
 
 Render redeploy, env var flips, and all dashboard/secret setup stay manual owner steps.
+
+## 2026-07-03 - Approved Drafts Sync to HubSpot Notes
+
+Decision:
+
+Wire approved Slack review decisions to HubSpot note creation, and add a catch-up API for approved drafts that were not synced yet.
+
+Why:
+
+The workflow could already create a reviewable draft and record an approval, but the approved output stopped inside the local system. A real business workflow needs a controlled handoff into the team's CRM after a human decision.
+
+Plain English:
+
+Slack is the approval desk. HubSpot is the filing cabinet. Once a reviewer approves a draft, the system files the approved draft and its source links into HubSpot as a note. If the filing cabinet is unavailable, the approval still stands and the error is written down for follow-up.
+
+Progress completed:
+
+- `Worker.apply_review_decision()` now attempts HubSpot sync after an `approved` decision when a HubSpot client/token is configured.
+- Successful sync stores `hubspot_object_id`, moves the draft to `synced_to_crm`, and logs a `crm_synced` event.
+- Failed sync leaves the draft `approved`, logs `crm_sync_failed`, and does not break the Slack interaction.
+- Added idempotent `POST /crm/sync-approved` for approved drafts that still need CRM sync.
+- Added tests using a fake HubSpot client, with no network calls.

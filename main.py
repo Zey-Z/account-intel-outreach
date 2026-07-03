@@ -99,6 +99,13 @@ try:
         run_id = await to_thread(worker.process_next)
         return {"processed_run_id": run_id}
 
+    @app.post("/crm/sync-approved")
+    async def sync_approved_crm_drafts(x_api_key: str | None = Header(default=None)) -> dict[str, list[str]]:
+        require_api_key(x_api_key)
+        db = get_db()
+        worker = Worker(db=db, icp_path=ICP_PATH)
+        return worker.sync_approved_drafts()
+
     @app.post("/slack/send-latest-review")
     async def send_latest_slack_review(x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
         from account_intel.integrations.slack import SlackWebhookClient, build_review_message_from_report

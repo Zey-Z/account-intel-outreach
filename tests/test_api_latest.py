@@ -133,6 +133,30 @@ class ApiLatestRunTests(unittest.TestCase):
         self.assertEqual(response, {"processed_run_id": "run_123"})
         self.assertEqual(calls, ["to-thread-called", "worker-called"])
 
+    def test_crm_sync_approved_endpoint_requires_api_key_and_returns_sync_result(self):
+        calls = []
+
+        class FakeWorker:
+            def __init__(self, db, icp_path):
+                self.db = db
+                self.icp_path = icp_path
+
+            def sync_approved_drafts(self):
+                calls.append("sync-called")
+                return {"synced": ["draft_1"], "failed": ["draft_2"]}
+
+        main.API_KEY = "test-secret"
+
+        with self.assertRaises(main.HTTPException) as caught:
+            asyncio.run(main.sync_approved_crm_drafts())
+
+        with patch("main.Worker", FakeWorker):
+            response = asyncio.run(main.sync_approved_crm_drafts(x_api_key="test-secret"))
+
+        self.assertEqual(caught.exception.status_code, 401)
+        self.assertEqual(response, {"synced": ["draft_1"], "failed": ["draft_2"]})
+        self.assertEqual(calls, ["sync-called"])
+
     def test_send_latest_slack_review_posts_latest_report_message(self):
         from account_intel.db import Database
         from account_intel.worker import Worker

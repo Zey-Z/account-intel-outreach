@@ -366,6 +366,73 @@ class Database:
                 raise KeyError(draft_id)
             return self._decode_draft(dict(row))
 
+    def get_draft_sync_context(self, draft_id: str) -> dict[str, Any]:
+        with self.connect() as conn:
+            row = conn.execute(
+                """
+                SELECT
+                    d.*,
+                    c.company_id,
+                    c.run_id,
+                    c.name AS company_name,
+                    c.domain AS company_domain
+                FROM outreach_drafts d
+                JOIN companies c ON c.company_id = d.company_id
+                WHERE d.draft_id = ?
+                """,
+                (draft_id,),
+            ).fetchone()
+            if row is None:
+                raise KeyError(draft_id)
+            return self._decode_draft(dict(row))
+
+    def list_approved_drafts_without_hubspot(self) -> list[dict[str, Any]]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT
+                    d.*,
+                    c.company_id,
+                    c.run_id,
+                    c.name AS company_name,
+                    c.domain AS company_domain
+                FROM outreach_drafts d
+                JOIN companies c ON c.company_id = d.company_id
+                WHERE d.status = 'approved'
+                  AND (d.hubspot_object_id IS NULL OR d.hubspot_object_id = '')
+                ORDER BY d.reviewed_at, d.draft_id
+                """
+            ).fetchall()
+            return [self._decode_draft(dict(row)) for row in rows]
+
+    def list_source_urls_for_draft(self, draft_id: str) -> list[str]:
+        draft = self.get_draft_sync_context(draft_id)
+        evidence_refs = draft.get("evidence_refs") or []
+        with self.connect() as conn:
+            if evidence_refs:
+                placeholders = ", ".join("?" for _ in evidence_refs)
+                rows = conn.execute(
+                    f"""
+                    SELECT DISTINCT source_url
+                    FROM research_findings
+                    WHERE company_id = ?
+                      AND finding_id IN ({placeholders})
+                    ORDER BY source_url
+                    """,
+                    tuple([draft["company_id"], *evidence_refs]),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT DISTINCT source_url
+                    FROM research_findings
+                    WHERE company_id = ?
+                    ORDER BY source_url
+                    """,
+                    (draft["company_id"],),
+                ).fetchall()
+            return [str(row["source_url"]) for row in rows]
+
     def get_run_id_for_draft(self, draft_id: str) -> str:
         with self.connect() as conn:
             row = conn.execute(

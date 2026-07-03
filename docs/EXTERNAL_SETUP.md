@@ -40,7 +40,13 @@ Header: X-API-Key: <ACCOUNT_INTEL_API_KEY>
 1. Create a private app.
 2. Enable CRM object write permissions for notes and companies.
 3. Put token in `HUBSPOT_PRIVATE_APP_TOKEN`.
-4. Sync only approved drafts.
+4. Sync only approved drafts. When a Slack reviewer clicks Approve, the service attempts to create a HubSpot note with the approved draft and source links.
+5. If HubSpot was not configured during approval, run the catch-up endpoint later:
+
+```text
+POST https://<render-url>/crm/sync-approved
+Header: X-API-Key: <ACCOUNT_INTEL_API_KEY>
+```
 
 ## Power BI
 
