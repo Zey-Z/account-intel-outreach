@@ -171,6 +171,22 @@ class ReportingAndIntegrationTests(unittest.TestCase):
         self.assertIn("https://example.com/source-1", note_body)
         self.assertIn("https://example.com/source-2", note_body)
 
+    def test_hubspot_note_payload_includes_required_timestamp(self):
+        from account_intel.integrations.hubspot import HubSpotClient
+
+        payload = HubSpotClient(token="fake-token").create_note_payload(
+            "Northstar Health",
+            {
+                "subject": "Idea for operations workflows",
+                "body": "Human-approved outreach draft.",
+            },
+            [],
+        )
+
+        timestamp = payload["properties"].get("hs_timestamp")
+        self.assertIsInstance(timestamp, str)
+        self.assertTrue(timestamp.isdigit())
+
 
 if __name__ == "__main__":
     unittest.main()

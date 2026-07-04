@@ -652,3 +652,24 @@ Progress completed:
 - Pinned all packages in `requirements.txt` to currently installed versions.
 - Documented Power BI Web CSV setup with `X-API-Key`.
 - Added tests for CSV export, whitelist rejection, and database singleton reuse.
+
+## 2026-07-03 - HubSpot Note Timestamp Requirement
+
+Decision:
+
+Add `hs_timestamp` to every HubSpot note payload.
+
+Why:
+
+Live approval testing showed Slack review decisions were recorded correctly, but HubSpot note creation returned HTTP 400. HubSpot requires a timestamp for notes so the CRM can place the note on the activity timeline.
+
+Plain English:
+
+HubSpot needs both the note text and a clock time. Without the clock time, it knows what we want to save, but not where to place it in the company's history.
+
+Progress completed:
+
+- Reproduced the live failure after Slack approval: draft moved to `approved`, but CRM sync logged `crm_sync_failed`.
+- Added a regression test requiring `hs_timestamp` in HubSpot note payloads.
+- Added millisecond timestamp generation to `HubSpotClient.create_note_payload()`.
+- Verified the targeted test and the full test suite pass locally.

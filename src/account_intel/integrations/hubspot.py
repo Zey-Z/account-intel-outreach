@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 import urllib.request
 from dataclasses import dataclass
 from typing import Any
@@ -18,7 +19,7 @@ class HubSpotClient:
             f"{draft['body']}\n\n"
             "Sources:\n" + "\n".join(f"- {url}" for url in source_urls)
         )
-        return {"properties": {"hs_note_body": body}}
+        return {"properties": {"hs_timestamp": str(int(time.time() * 1000)), "hs_note_body": body}}
 
     def create_note(self, company_name: str, draft: dict[str, Any], source_urls: list[str]) -> str:
         payload = self.create_note_payload(company_name, draft, source_urls)
