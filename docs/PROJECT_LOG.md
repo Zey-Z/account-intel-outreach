@@ -673,3 +673,23 @@ Progress completed:
 - Added a regression test requiring `hs_timestamp` in HubSpot note payloads.
 - Added millisecond timestamp generation to `HubSpotClient.create_note_payload()`.
 - Verified the targeted test and the full test suite pass locally.
+
+## 2026-07-03 - CRM Sync Evidence in Run Reports
+
+Decision:
+
+Expose review and HubSpot sync fields directly in `build_run_report()`.
+
+Why:
+
+The system already stored CRM sync results, but demo viewers had to inspect low-level event logs to see the HubSpot note ID. The run report should show the business outcome directly.
+
+Plain English:
+
+The report is the dashboard window. If the note reached HubSpot, the window should say so clearly instead of making someone dig through the engine room.
+
+Progress completed:
+
+- Added draft body, reviewer, review timestamp, revision fields, and `hubspot_object_id` to report drafts.
+- Added `crm_synced_count` to the report summary.
+- Added a regression test that simulates review approval and HubSpot sync, then verifies the report shows the CRM evidence.

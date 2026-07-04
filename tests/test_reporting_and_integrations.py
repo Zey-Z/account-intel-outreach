@@ -43,6 +43,9 @@ class ReportingAndIntegrationTests(unittest.TestCase):
                 companies=[{"name": "Northstar Health", "domain": "northstar.example"}],
             )
             Worker(db=db, offline=True).process_next()
+            draft_id = db.list_outreach_drafts(run_id)[0]["draft_id"]
+            db.update_draft_review(draft_id, "approved", "unit-reviewer")
+            db.set_draft_hubspot_id(draft_id, "hubspot-note-123")
 
             report = build_run_report(db, run_id)
 
@@ -51,8 +54,13 @@ class ReportingAndIntegrationTests(unittest.TestCase):
             self.assertGreaterEqual(report["summary"]["finding_count"], 3)
             self.assertEqual(report["summary"]["analysis_count"], 1)
             self.assertGreaterEqual(report["summary"]["event_count"], 2)
+            self.assertEqual(report["summary"]["crm_synced_count"], 1)
             self.assertIn(report["summary"]["final_status"], {"sent_to_review", "needs_human_research", "archived"})
             self.assertEqual(report["drafts"][0]["company_name"], "Northstar Health")
+            self.assertEqual(report["drafts"][0]["status"], "synced_to_crm")
+            self.assertEqual(report["drafts"][0]["reviewed_by"], "unit-reviewer")
+            self.assertTrue(report["drafts"][0]["reviewed_at"])
+            self.assertEqual(report["drafts"][0]["hubspot_object_id"], "hubspot-note-123")
             self.assertEqual(report["findings"][0]["company_name"], "Northstar Health")
             self.assertIn("source_url", report["findings"][0])
             self.assertEqual(report["analysis"][0]["company_name"], "Northstar Health")

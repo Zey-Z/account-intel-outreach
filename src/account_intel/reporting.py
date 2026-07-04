@@ -20,9 +20,15 @@ def build_run_report(db: Database, run_id: str) -> dict[str, Any]:
                 d.draft_id,
                 c.name AS company_name,
                 d.subject,
+                d.body,
                 d.confidence,
                 d.review_flag,
                 d.status,
+                d.reviewed_by,
+                d.reviewed_at,
+                d.revision_note,
+                d.revision_count,
+                d.hubspot_object_id,
                 d.evidence_refs,
                 d.validation_notes
             FROM outreach_drafts d
@@ -90,6 +96,7 @@ def build_run_report(db: Database, run_id: str) -> dict[str, Any]:
             "finding_count": len(findings),
             "analysis_count": len(analysis),
             "draft_count": len(drafts),
+            "crm_synced_count": sum(1 for draft in drafts if draft.get("hubspot_object_id")),
             "event_count": len(events),
         },
         "companies": companies,
