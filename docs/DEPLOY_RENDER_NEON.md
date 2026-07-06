@@ -38,6 +38,25 @@ Neon         persistent Postgres database
 
 Use this value as Render's `DATABASE_URL`.
 
+## Database Migrations
+
+The database schema is versioned in `migrations/`.
+
+- `Database.initialize()` creates `schema_migrations` if needed.
+- Migration files run in filename order.
+- Already-applied migrations are skipped.
+- `schema.sql` is now only a compatibility note; do not edit it for new schema
+  changes.
+
+For future schema changes, add a new file such as:
+
+```text
+migrations/0002_add_example_column.sql
+```
+
+Each migration should include the SQL needed for the supported database dialects
+and should be safe to apply once.
+
 ## Render Setup
 
 1. Create a new Render web service from this repo.
@@ -67,6 +86,28 @@ HUBSPOT_PRIVATE_APP_TOKEN=
 ```
 
 6. Deploy.
+
+## Test-Gated Deploy Setup
+
+The repository includes a GitHub Actions deploy workflow. It does not deploy
+directly from a developer laptop. It first runs the unit test suite in offline
+mode, then calls a Render Deploy Hook only if the tests pass.
+
+One-time owner setup:
+
+1. In Render, open the `account-intel-outreach-api` web service.
+2. Open Settings.
+3. Find Deploy Hook and create a new deploy hook URL.
+4. Copy the full deploy hook URL.
+5. In GitHub, open `Zey-Z/account-intel-outreach`.
+6. Go to Settings -> Secrets and variables -> Actions.
+7. Add a repository secret named `RENDER_DEPLOY_HOOK_URL`.
+8. Paste the Render Deploy Hook URL as the value.
+9. Optional but recommended: enable a branch protection rule for `main` that
+   requires the `CI / Unit tests` check before merging.
+
+If `RENDER_DEPLOY_HOOK_URL` is missing, the deploy workflow fails loudly. That is
+intentional: a silent no-op would make the repo look deployed when it is not.
 
 ## First Verification
 

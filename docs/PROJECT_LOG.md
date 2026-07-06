@@ -714,3 +714,27 @@ Progress completed:
 - CI uses the Python version in `.python-version`.
 - CI installs `requirements.txt`, sets `PYTHONPATH=src`, and runs `python -m unittest discover -s tests -v`.
 - Added a CI badge to `README.md`.
+
+## 2026-07-06 - Test-Gated Deploy and Versioned Migrations
+
+Decision:
+
+Add a GitHub Actions deploy workflow gated by tests, and replace one-shot schema initialization with versioned database migrations.
+
+Why:
+
+Deploying directly after a push is risky if tests are red. Updating database structure without a migration history is also risky because future changes become hard to reason about and hard to replay. A production-readiness story needs both a deploy gate and a database upgrade path.
+
+Plain English:
+
+The deploy workflow is a locked door: tests must pass before Render can be asked to redeploy. The migration table is the database's checklist: it remembers which schema updates have already been applied.
+
+Progress completed:
+
+- Added `.github/workflows/deploy.yml` with a test job and a deploy job that depends on it.
+- Deploy uses `RENDER_DEPLOY_HOOK_URL` and fails loudly if the secret is missing.
+- Added `migrations/0001_init.sql` with SQLite and Postgres schema sections.
+- Added `schema_migrations` tracking through `Database.initialize()`.
+- Kept `schema.sql` as a compatibility note pointing to `migrations/`.
+- Added tests proving migrations are idempotent and applied in filename order.
+- Documented Render deploy hook setup and migration usage in `docs/DEPLOY_RENDER_NEON.md`.

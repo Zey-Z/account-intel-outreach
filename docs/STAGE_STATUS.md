@@ -27,6 +27,8 @@
 - Lazy database singleton in the FastAPI service.
 - Exact pinned Python dependency versions.
 - GitHub Actions CI for the offline unit test suite.
+- GitHub Actions deploy workflow gated by the test suite.
+- Versioned database migrations with `schema_migrations` tracking.
 - BI-ready SQL views.
 - Human-readable run report script.
 - Integration boundary tests for Slack signature verification and HubSpot note
@@ -35,8 +37,9 @@
 ## Not Yet Connected
 
 - Live CrewAI runtime smoke test with an LLM key.
-- HubSpot private app configuration.
 - Power BI `.pbix` file.
+- GitHub secret `RENDER_DEPLOY_HOOK_URL` for automatic Render deploys, if not
+  already configured.
 
 ## Why This Is Still Useful
 

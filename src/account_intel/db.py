@@ -38,8 +38,9 @@ def decode_json_value(value: Any) -> Any:
 
 
 class Database:
-    def __init__(self, url: str):
+    def __init__(self, url: str, migrations_dir: Path | str | None = None):
         self.url = url
+        self.migrations_dir = Path(migrations_dir) if migrations_dir is not None else Path(__file__).resolve().parents[2] / "migrations"
         if url.startswith("sqlite:///"):
             self.backend = "sqlite"
             self.path = Path(url.removeprefix("sqlite:///"))
@@ -73,137 +74,51 @@ class Database:
 
     def initialize(self) -> None:
         with self.connect() as conn:
-            if self.backend == "postgres":
-                schema_path = Path(__file__).resolve().parents[2] / "schema.sql"
-                conn.executescript(schema_path.read_text(encoding="utf-8"))
-            else:
-                conn.executescript(
-                    """
-                CREATE TABLE IF NOT EXISTS runs (
-                    run_id TEXT PRIMARY KEY,
-                    triggered_by TEXT NOT NULL,
-                    icp_profile TEXT NOT NULL,
-                    status TEXT NOT NULL,
-                    started_at TEXT NOT NULL,
-                    finished_at TEXT,
-                    company_count INTEGER NOT NULL DEFAULT 0,
-                    retry_count INTEGER NOT NULL DEFAULT 0
-                );
-
-                CREATE TABLE IF NOT EXISTS companies (
-                    company_id TEXT PRIMARY KEY,
-                    run_id TEXT NOT NULL REFERENCES runs(run_id),
-                    name TEXT NOT NULL,
-                    domain TEXT,
-                    segment TEXT
-                );
-
-                CREATE TABLE IF NOT EXISTS research_findings (
-                    finding_id TEXT PRIMARY KEY,
-                    company_id TEXT NOT NULL REFERENCES companies(company_id),
-                    claim TEXT NOT NULL,
-                    source_url TEXT NOT NULL,
-                    source_type TEXT NOT NULL,
-                    retrieved_at TEXT NOT NULL,
-                    grounding_passed INTEGER NOT NULL DEFAULT 0
-                );
-
-                CREATE TABLE IF NOT EXISTS analysis_outputs (
-                    analysis_id TEXT PRIMARY KEY,
-                    company_id TEXT NOT NULL REFERENCES companies(company_id),
-                    icp_profile TEXT NOT NULL,
-                    fit_score INTEGER NOT NULL,
-                    pain_point_match TEXT NOT NULL,
-                    buying_trigger TEXT NOT NULL,
-                    risk_flags TEXT NOT NULL,
-                    recommended_angle TEXT NOT NULL,
-                    confidence REAL NOT NULL
-                );
-
-                CREATE TABLE IF NOT EXISTS outreach_drafts (
-                    draft_id TEXT PRIMARY KEY,
-                    company_id TEXT NOT NULL REFERENCES companies(company_id),
-                    subject TEXT NOT NULL,
-                    body TEXT NOT NULL,
-                    confidence REAL NOT NULL,
-                    review_flag TEXT NOT NULL,
-                    evidence_refs TEXT NOT NULL,
-                    status TEXT NOT NULL,
-                    reviewed_by TEXT,
-                    reviewed_at TEXT,
-                    revision_note TEXT,
-                    revision_count INTEGER NOT NULL DEFAULT 0,
-                    hubspot_object_id TEXT,
-                    validation_notes TEXT NOT NULL DEFAULT ''
-                );
-
-                CREATE TABLE IF NOT EXISTS run_events (
-                    event_id TEXT PRIMARY KEY,
-                    run_id TEXT NOT NULL REFERENCES runs(run_id),
-                    company_id TEXT,
-                    event_type TEXT NOT NULL,
-                    payload TEXT NOT NULL,
-                    created_at TEXT NOT NULL
-                );
-
-                CREATE VIEW IF NOT EXISTS lead_runs_view AS
-                SELECT
-                    r.run_id,
-                    r.icp_profile,
-                    r.status,
-                    r.company_count,
-                    r.retry_count,
-                    AVG(a.fit_score) AS average_fit_score,
-                    SUM(CASE WHEN rf.grounding_passed = 1 THEN 1 ELSE 0 END) * 1.0 /
-                        NULLIF(COUNT(rf.finding_id), 0) AS grounding_rate
-                FROM runs r
-                LEFT JOIN companies c ON c.run_id = r.run_id
-                LEFT JOIN analysis_outputs a ON a.company_id = c.company_id
-                LEFT JOIN research_findings rf ON rf.company_id = c.company_id
-                GROUP BY r.run_id;
-
-                CREATE VIEW IF NOT EXISTS outreach_performance_view AS
-                SELECT
-                    status,
-                    review_flag,
-                    COUNT(*) AS draft_count,
-                    AVG(confidence) AS average_confidence
-                FROM outreach_drafts
-                GROUP BY status, review_flag;
-
-                CREATE VIEW IF NOT EXISTS agent_quality_view AS
-                SELECT
-                    r.run_id,
-                    r.icp_profile,
-                    COUNT(DISTINCT c.company_id) AS company_count,
-                    COUNT(DISTINCT rf.finding_id) AS finding_count,
-                    SUM(CASE WHEN rf.grounding_passed = 1 THEN 1 ELSE 0 END) AS grounded_finding_count,
-                    SUM(CASE WHEN rf.grounding_passed = 1 THEN 1 ELSE 0 END) * 1.0 /
-                        NULLIF(COUNT(rf.finding_id), 0) AS grounding_rate,
-                    AVG(a.confidence) AS average_analysis_confidence,
-                    AVG(d.confidence) AS average_draft_confidence,
-                    SUM(CASE WHEN d.review_flag = 'ready_for_review' THEN 1 ELSE 0 END) AS ready_for_review_count,
-                    SUM(CASE WHEN d.review_flag = 'needs_human_review' THEN 1 ELSE 0 END) AS needs_human_review_count
-                FROM runs r
-                LEFT JOIN companies c ON c.run_id = r.run_id
-                LEFT JOIN research_findings rf ON rf.company_id = c.company_id
-                LEFT JOIN analysis_outputs a ON a.company_id = c.company_id
-                LEFT JOIN outreach_drafts d ON d.company_id = c.company_id
-                GROUP BY r.run_id;
-
-                CREATE VIEW IF NOT EXISTS cost_latency_view AS
-                SELECT
-                    r.run_id,
-                    r.icp_profile,
-                    COUNT(e.event_id) AS event_count,
-                    SUM(COALESCE(json_extract(e.payload, '$.token_estimate'), 0)) AS token_estimate,
-                    AVG(COALESCE(json_extract(e.payload, '$.latency_ms'), NULL)) AS average_latency_ms,
-                    SUM(CASE WHEN e.event_type = 'worker_failed' THEN 1 ELSE 0 END) AS failure_event_count
-                FROM runs r
-                LEFT JOIN run_events e ON e.run_id = r.run_id
-                GROUP BY r.run_id;
-                """
+            self._ensure_migration_table(conn)
+            applied = {
+                row["id"]
+                for row in conn.execute("SELECT id FROM schema_migrations").fetchall()
+            }
+            for path in sorted(self.migrations_dir.glob("*.sql")):
+                migration_id = path.name
+                if migration_id in applied:
+                    continue
+                sql = self._migration_sql_for_backend(path.read_text(encoding="utf-8"))
+                if sql.strip():
+                    conn.executescript(sql)
+                conn.execute(
+                    "INSERT INTO schema_migrations(id, applied_at) VALUES (?, ?)",
+                    (migration_id, now_iso()),
                 )
+
+    def _ensure_migration_table(self, conn: "ConnectionAdapter") -> None:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+                id TEXT PRIMARY KEY,
+                applied_at TEXT NOT NULL
+            )
+            """
+        )
+
+    def _migration_sql_for_backend(self, sql: str) -> str:
+        selected_lines: list[str] = []
+        common_lines: list[str] = []
+        current_dialect: str | None = None
+        has_dialect_markers = False
+        for line in sql.splitlines():
+            stripped = line.strip()
+            if stripped.lower().startswith("-- dialect:"):
+                has_dialect_markers = True
+                current_dialect = stripped.split(":", 1)[1].strip().lower()
+                continue
+            if not has_dialect_markers:
+                common_lines.append(line)
+            elif current_dialect == self.backend:
+                selected_lines.append(line)
+        if not has_dialect_markers:
+            return "\n".join(common_lines)
+        return "\n".join(common_lines + selected_lines)
 
     def create_run(
         self,

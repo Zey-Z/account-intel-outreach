@@ -137,8 +137,60 @@ class CoreWorkflowTests(unittest.TestCase):
             events = db.list_events(run_id)
 
             self.assertEqual(run["status"], "researching")
-            self.assertEqual(events[0]["event_type"], "research_started")
-            self.assertEqual(events[0]["payload"]["company_count"], 1)
+        self.assertEqual(events[0]["event_type"], "research_started")
+        self.assertEqual(events[0]["payload"]["company_count"], 1)
+
+    def test_database_migrations_are_idempotent(self):
+        from account_intel.db import Database
+
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Database(f"sqlite:///{Path(tmp) / 'workflow.db'}")
+
+            db.initialize()
+            db.initialize()
+
+            with db.connect() as conn:
+                rows = conn.execute("SELECT id FROM schema_migrations ORDER BY id").fetchall()
+
+        self.assertEqual([row["id"] for row in rows], ["0001_init.sql"])
+
+    def test_database_migrations_apply_incrementally_in_filename_order(self):
+        from account_intel.db import Database
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            migrations_dir = root / "migrations"
+            migrations_dir.mkdir()
+            (migrations_dir / "0001_create_probe.sql").write_text(
+                """
+                -- dialect: sqlite
+                CREATE TABLE migration_probe (
+                    id TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                );
+                """,
+                encoding="utf-8",
+            )
+            (migrations_dir / "0002_insert_probe.sql").write_text(
+                """
+                -- dialect: sqlite
+                INSERT INTO migration_probe(id, value) VALUES ('order', 'second migration saw first table');
+                """,
+                encoding="utf-8",
+            )
+            db = Database(f"sqlite:///{root / 'workflow.db'}", migrations_dir=migrations_dir)
+
+            db.initialize()
+
+            with db.connect() as conn:
+                value = conn.execute("SELECT value FROM migration_probe WHERE id = ?", ("order",)).fetchone()["value"]
+                migration_rows = conn.execute("SELECT id FROM schema_migrations ORDER BY id").fetchall()
+
+        self.assertEqual(value, "second migration saw first table")
+        self.assertEqual(
+            [row["id"] for row in migration_rows],
+            ["0001_create_probe.sql", "0002_insert_probe.sql"],
+        )
 
     def test_database_accepts_postgres_url_for_neon_deployment(self):
         from account_intel.db import Database

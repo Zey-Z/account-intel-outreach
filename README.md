@@ -76,12 +76,15 @@ Implemented:
 - API-key-protected CSV reporting endpoints.
 - Human-readable run report script.
 - GitHub Actions CI that runs the offline unit test suite without secrets.
+- GitHub Actions deploy workflow that triggers Render only after tests pass.
+- Versioned database migrations with `schema_migrations` tracking.
 
 Next manual setup:
 
 - Turn on real CrewAI runtime in Render after setting LLM credentials.
-- Connect HubSpot private app.
 - Build Power BI dashboard from the database views.
+- Add the `RENDER_DEPLOY_HOOK_URL` GitHub secret if automatic deploys are not
+  configured yet.
 
 Start with [docs/CLASSROOM_WALKTHROUGH.md](docs/CLASSROOM_WALKTHROUGH.md) if
 you are learning the system from scratch. Use
