@@ -1,5 +1,7 @@
 # AI Account Intelligence & Outreach Ops System
 
+[![CI](https://github.com/Zey-Z/account-intel-outreach/actions/workflows/ci.yml/badge.svg)](https://github.com/Zey-Z/account-intel-outreach/actions/workflows/ci.yml)
+
 Portfolio-grade multi-agent workflow for account research, ICP fit scoring,
 source-grounded outreach drafting, human review, and reporting.
 
@@ -73,6 +75,7 @@ Implemented:
 - Eval runner and BI-ready views.
 - API-key-protected CSV reporting endpoints.
 - Human-readable run report script.
+- GitHub Actions CI that runs the offline unit test suite without secrets.
 
 Next manual setup:
 

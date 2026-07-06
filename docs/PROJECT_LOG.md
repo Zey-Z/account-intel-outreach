@@ -693,3 +693,24 @@ Progress completed:
 - Added draft body, reviewer, review timestamp, revision fields, and `hubspot_object_id` to report drafts.
 - Added `crm_synced_count` to the report summary.
 - Added a regression test that simulates review approval and HubSpot sync, then verifies the report shows the CRM evidence.
+
+## 2026-07-06 - GitHub Actions CI Gate
+
+Decision:
+
+Add a GitHub Actions CI workflow that runs the full offline unit test suite on every push and pull request to `main`.
+
+Why:
+
+The project now has enough moving parts that manual local testing is not enough. CI gives the repo a repeatable quality gate: code can be checked in, but the project record shows whether the test suite still passes without any private API keys.
+
+Plain English:
+
+CI is the automatic test checkpoint. Every time code is pushed, GitHub opens the hood, installs the project, and runs the tests before anyone trusts the change.
+
+Progress completed:
+
+- Added `.github/workflows/ci.yml`.
+- CI uses the Python version in `.python-version`.
+- CI installs `requirements.txt`, sets `PYTHONPATH=src`, and runs `python -m unittest discover -s tests -v`.
+- Added a CI badge to `README.md`.

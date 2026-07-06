@@ -26,6 +26,7 @@
 - API-key-protected CSV reporting endpoints for BI views.
 - Lazy database singleton in the FastAPI service.
 - Exact pinned Python dependency versions.
+- GitHub Actions CI for the offline unit test suite.
 - BI-ready SQL views.
 - Human-readable run report script.
 - Integration boundary tests for Slack signature verification and HubSpot note
