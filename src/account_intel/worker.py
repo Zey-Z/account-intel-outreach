@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import logging
 import os
 from pathlib import Path
 from typing import Any
@@ -9,6 +11,9 @@ from account_intel.crew import AccountIntelligenceCrew
 from account_intel.db import Database
 from account_intel.integrations.hubspot import HubSpotClient
 from account_intel.research_tools import build_research_client
+
+
+logger = logging.getLogger("account_intel.worker")
 
 
 class Worker:
@@ -45,6 +50,17 @@ class Worker:
                     result = self.crew.run_company(company["name"], company["domain"], profile)
                 except Exception as exc:
                     last_company_error = exc
+                    logger.warning(
+                        json.dumps(
+                            {
+                                "event": "company_failed",
+                                "run_id": run_id,
+                                "company": company["name"],
+                                "error": str(exc),
+                            },
+                            sort_keys=True,
+                        )
+                    )
                     self.db.log_event(
                         run_id,
                         "company_failed",
@@ -90,6 +106,10 @@ class Worker:
             self.db.increment_retry(run_id)
             self.db.update_run_status(run_id, "failed")
             self.db.log_event(run_id, "worker_failed", {"error": str(exc)})
+            logger.error(
+                json.dumps({"event": "worker_failed", "run_id": run_id, "error": str(exc)}, sort_keys=True),
+                exc_info=True,
+            )
             raise
 
     def apply_review_decision(
@@ -147,6 +167,17 @@ class Worker:
                 },
                 company_id=draft["company_id"],
             )
+            logger.info(
+                json.dumps(
+                    {
+                        "event": "crm_synced",
+                        "run_id": run_id,
+                        "draft_id": draft_id,
+                        "hubspot_object_id": hubspot_object_id,
+                    },
+                    sort_keys=True,
+                )
+            )
             return True
         except Exception as exc:
             self.db.log_event(
@@ -158,6 +189,17 @@ class Worker:
                     "error": str(exc),
                 },
                 company_id=draft["company_id"],
+            )
+            logger.warning(
+                json.dumps(
+                    {
+                        "event": "crm_sync_failed",
+                        "run_id": run_id,
+                        "draft_id": draft_id,
+                        "error": str(exc),
+                    },
+                    sort_keys=True,
+                )
             )
             return False
 

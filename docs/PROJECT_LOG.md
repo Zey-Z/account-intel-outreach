@@ -738,3 +738,28 @@ Progress completed:
 - Kept `schema.sql` as a compatibility note pointing to `migrations/`.
 - Added tests proving migrations are idempotent and applied in filename order.
 - Documented Render deploy hook setup and migration usage in `docs/DEPLOY_RENDER_NEON.md`.
+
+## 2026-07-06 - Request Tracing, Rate Limiting, and Deep Health
+
+Decision:
+
+Add structured request logs, a per-request trace header, demo-safe rate limiting, and a protected deep health check.
+
+Why:
+
+Once a workflow is deployed, the next question is not only "does it run?" but "can we see what happened when it fails or gets noisy traffic?" Request tracing gives each API call an ID, rate limiting reduces accidental or abusive repeated calls, and deep health checks whether the database path is actually reachable.
+
+Plain English:
+
+The basic `/health` endpoint says the front door opens. The deep health check walks inside and verifies the filing cabinet is still reachable. The request ID is the claim ticket for each visit, and rate limiting is the front desk rule that stops one visitor from repeatedly pressing the button too fast.
+
+Progress completed:
+
+- Added FastAPI middleware that logs one JSON line per request with method, path, status code, latency, and request ID.
+- Added `X-Request-Id` to API responses.
+- Added `LOG_LEVEL` configuration for server logging.
+- Replaced the worker poller's bare `print()` with structured logger calls.
+- Added worker logger calls for company failures, worker failures, CRM sync success, and CRM sync failure.
+- Added a single-instance sliding-window rate limiter on `POST /runs` and `POST /worker/process-next`.
+- Added `GET /health/deep`, protected by `X-API-Key`, with database latency and degraded-mode reporting.
+- Added tests for request logging, rate limiting, and degraded deep health behavior.

@@ -29,6 +29,9 @@
 - GitHub Actions CI for the offline unit test suite.
 - GitHub Actions deploy workflow gated by the test suite.
 - Versioned database migrations with `schema_migrations` tracking.
+- Structured API request logging with per-request `X-Request-Id`.
+- In-memory rate limiting on public write/worker endpoints.
+- API-key-protected deep health check for database reachability.
 - BI-ready SQL views.
 - Human-readable run report script.
 - Integration boundary tests for Slack signature verification and HubSpot note

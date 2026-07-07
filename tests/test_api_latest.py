@@ -3,6 +3,7 @@ import json
 import os
 import tempfile
 import unittest
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
@@ -16,6 +17,8 @@ class ApiLatestRunTests(unittest.TestCase):
         main.API_KEY = ""
         if hasattr(main, "reset_db_singleton"):
             main.reset_db_singleton()
+        if hasattr(main, "reset_rate_limiter"):
+            main.reset_rate_limiter()
 
     def tearDown(self):
         main.DATABASE_URL = self.original_database_url
@@ -24,6 +27,8 @@ class ApiLatestRunTests(unittest.TestCase):
             main._WORKER_POLL_TASK = None
         if hasattr(main, "reset_db_singleton"):
             main.reset_db_singleton()
+        if hasattr(main, "reset_rate_limiter"):
+            main.reset_rate_limiter()
 
     def test_get_latest_run_returns_most_recent_run_report(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -90,6 +95,83 @@ class ApiLatestRunTests(unittest.TestCase):
             )
 
         self.assertEqual(created["status"], "queued")
+
+    def test_request_logging_middleware_emits_structured_record_and_header(self):
+        from fastapi.testclient import TestClient
+
+        with self.assertLogs("account_intel.api", level="INFO") as captured:
+            response = TestClient(main.app).get("/health")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("X-Request-Id", response.headers)
+        request_logs = [
+            json.loads(record.getMessage())
+            for record in captured.records
+            if json.loads(record.getMessage()).get("event") == "http_request"
+        ]
+        self.assertEqual(len(request_logs), 1)
+        self.assertEqual(request_logs[0]["method"], "GET")
+        self.assertEqual(request_logs[0]["path"], "/health")
+        self.assertEqual(request_logs[0]["status_code"], 200)
+        self.assertGreaterEqual(request_logs[0]["latency_ms"], 0)
+        self.assertEqual(request_logs[0]["request_id"], response.headers["X-Request-Id"])
+
+    def test_create_run_rate_limiter_rejects_31st_request_and_resets_after_window(self):
+        class FakeClock:
+            def __init__(self):
+                self.current = 1000.0
+
+            def __call__(self):
+                return self.current
+
+            def advance(self, seconds):
+                self.current += seconds
+
+        payload = {
+            "company_name": "Oscar Health",
+            "domain": "hioscar.com",
+            "icp_profile": "healthcare_insurance_ops",
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            main.DATABASE_URL = f"sqlite:///{Path(tmp) / 'api.db'}"
+            clock = FakeClock()
+            main.reset_rate_limiter(clock=clock, limit=30)
+
+            for _ in range(30):
+                asyncio.run(main.create_run(payload))
+            with self.assertRaises(main.HTTPException) as caught:
+                asyncio.run(main.create_run(payload))
+
+            clock.advance(61)
+            recovered = asyncio.run(main.create_run(payload))
+
+        self.assertEqual(caught.exception.status_code, 429)
+        self.assertEqual(caught.exception.headers["Retry-After"], "60")
+        self.assertEqual(recovered["status"], "queued")
+
+    def test_deep_health_returns_degraded_when_database_query_fails(self):
+        from fastapi.testclient import TestClient
+
+        class BrokenConnection:
+            def execute(self, _sql):
+                raise RuntimeError("database unavailable")
+
+        class BrokenDB:
+            backend = "sqlite"
+
+            @contextmanager
+            def connect(self):
+                yield BrokenConnection()
+
+        with patch("main.get_db", return_value=BrokenDB()):
+            response = TestClient(main.app).get("/health/deep")
+
+        self.assertEqual(response.status_code, 503)
+        body = response.json()
+        self.assertEqual(body["status"], "degraded")
+        self.assertEqual(body["db_dialect"], "sqlite")
+        self.assertGreaterEqual(body["db_latency_ms"], 0)
 
     def test_latest_run_rejects_missing_api_key_when_configured(self):
         main.API_KEY = "test-secret"

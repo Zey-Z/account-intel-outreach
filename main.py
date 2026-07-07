@@ -5,11 +5,15 @@ import csv
 import io
 import json
 import hmac
+import logging
+import math
 import os
 import sys
+import time
+import uuid
 from asyncio import to_thread
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
@@ -25,6 +29,8 @@ load_local_env(ROOT / ".env")
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/account_intel.db")
 ICP_PATH = Path(os.getenv("ICP_PROFILES_PATH", "icp_profiles.yaml"))
 API_KEY = os.getenv("ACCOUNT_INTEL_API_KEY", "")
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "30"))
 _WORKER_POLL_TASK: asyncio.Task[Any] | None = None
 _DB_INSTANCE: Database | None = None
 _DB_INSTANCE_URL = ""
@@ -34,6 +40,45 @@ REPORT_VIEW_WHITELIST = {
     "agent_quality_view",
     "cost_latency_view",
 }
+
+logging.basicConfig(level=getattr(logging, LOG_LEVEL, logging.INFO), format="%(message)s")
+logging.getLogger().setLevel(getattr(logging, LOG_LEVEL, logging.INFO))
+logger = logging.getLogger("account_intel.api")
+
+
+class SlidingWindowRateLimiter:
+    def __init__(
+        self,
+        limit: int = 30,
+        window_seconds: int = 60,
+        clock: Callable[[], float] | None = None,
+    ):
+        self.limit = limit
+        self.window_seconds = window_seconds
+        self.clock = clock or time.monotonic
+        self._hits: dict[str, list[float]] = {}
+
+    def allow(self, key: str) -> tuple[bool, int]:
+        now = self.clock()
+        hits = [hit for hit in self._hits.get(key, []) if now - hit < self.window_seconds]
+        if len(hits) >= self.limit:
+            retry_after = max(1, math.ceil(self.window_seconds - (now - hits[0])))
+            self._hits[key] = hits
+            return False, retry_after
+        hits.append(now)
+        self._hits[key] = hits
+        return True, 0
+
+
+# This limiter is intentionally in-memory and single-instance. It is enough for a
+# portfolio/demo service, but multi-instance production would need shared state
+# such as Redis so all workers see the same request counters.
+_RATE_LIMITER = SlidingWindowRateLimiter(limit=RATE_LIMIT_PER_MINUTE)
+
+
+def reset_rate_limiter(clock: Callable[[], float] | None = None, limit: int | None = None) -> None:
+    global _RATE_LIMITER
+    _RATE_LIMITER = SlidingWindowRateLimiter(limit=limit or RATE_LIMIT_PER_MINUTE, clock=clock)
 
 
 def get_db() -> Database:
@@ -57,6 +102,32 @@ try:
 
     app = FastAPI(title="AI Account Intelligence & Outreach Ops System")
 
+    @app.middleware("http")
+    async def request_logging_middleware(request: Request, call_next: Any) -> Response:
+        request_id = str(uuid.uuid4())
+        start = time.perf_counter()
+        status_code = 500
+        try:
+            response = await call_next(request)
+            status_code = response.status_code
+            response.headers["X-Request-Id"] = request_id
+            return response
+        finally:
+            latency_ms = round((time.perf_counter() - start) * 1000, 3)
+            logger.info(
+                json.dumps(
+                    {
+                        "event": "http_request",
+                        "request_id": request_id,
+                        "method": request.method,
+                        "path": request.url.path,
+                        "status_code": status_code,
+                        "latency_ms": latency_ms,
+                    },
+                    sort_keys=True,
+                )
+            )
+
     def worker_poll_seconds() -> int:
         raw_value = os.getenv("WORKER_POLL_SECONDS", "0").strip()
         try:
@@ -75,7 +146,10 @@ try:
             try:
                 await worker_poll_once()
             except Exception as exc:
-                print(f"worker poll failed: {exc}", flush=True)
+                logger.error(
+                    json.dumps({"event": "worker_poll_failed", "error": str(exc)}, sort_keys=True),
+                    exc_info=True,
+                )
             await asyncio.sleep(seconds)
 
     @app.on_event("startup")
@@ -94,13 +168,56 @@ try:
         if not isinstance(x_api_key, str) or not hmac.compare_digest(x_api_key, API_KEY):
             raise HTTPException(status_code=401, detail="Invalid or missing API key.")
 
+    def enforce_rate_limit(request: Request | None, x_api_key: str | None) -> None:
+        key = _rate_limit_key(request, x_api_key)
+        allowed, retry_after = _RATE_LIMITER.allow(key)
+        if not allowed:
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded.",
+                headers={"Retry-After": str(retry_after)},
+            )
+
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
-    @app.post("/runs", status_code=202)
-    async def create_run(payload: dict[str, Any], x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+    @app.get("/health/deep")
+    async def deep_health(x_api_key: str | None = Header(default=None)) -> Any:
         require_api_key(x_api_key)
+        start = time.perf_counter()
+        db_dialect = "unknown"
+        try:
+            db = get_db()
+            db_dialect = getattr(db, "backend", "unknown")
+            with db.connect() as conn:
+                conn.execute("SELECT 1").fetchone()
+            return {
+                "status": "ok",
+                "db_latency_ms": round((time.perf_counter() - start) * 1000, 3),
+                "db_dialect": db_dialect,
+            }
+        except Exception as exc:
+            logger.error(
+                json.dumps({"event": "deep_health_degraded", "error": str(exc)}, sort_keys=True),
+                exc_info=True,
+            )
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "degraded",
+                    "db_latency_ms": round((time.perf_counter() - start) * 1000, 3),
+                    "db_dialect": db_dialect,
+                },
+            )
+
+    async def create_run(
+        payload: dict[str, Any],
+        x_api_key: str | None = None,
+        request: Any = None,
+    ) -> dict[str, Any]:
+        require_api_key(x_api_key)
+        enforce_rate_limit(request, x_api_key)
         companies = payload.get("companies")
         if not companies and payload.get("company_name"):
             companies = [{"name": payload["company_name"], "domain": payload.get("domain")}]
@@ -113,6 +230,14 @@ try:
             companies=companies,
         )
         return {"run_id": run_id, "status": "queued"}
+
+    @app.post("/runs", status_code=202)
+    async def create_run_route(
+        payload: dict[str, Any],
+        request: Request,
+        x_api_key: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        return await create_run(payload, x_api_key=x_api_key, request=request)
 
     @app.get("/runs/latest")
     async def get_latest_run(x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
@@ -175,13 +300,23 @@ try:
             writer.writerow(dict(row))
         return Response(content=output.getvalue(), media_type="text/csv")
 
-    @app.post("/worker/process-next")
-    async def process_next(x_api_key: str | None = Header(default=None)) -> dict[str, Any]:
+    async def process_next(
+        x_api_key: str | None = None,
+        request: Any = None,
+    ) -> dict[str, Any]:
         require_api_key(x_api_key)
+        enforce_rate_limit(request, x_api_key)
         db = get_db()
         worker = Worker(db=db, icp_path=ICP_PATH)
         run_id = await to_thread(worker.process_next)
         return {"processed_run_id": run_id}
+
+    @app.post("/worker/process-next")
+    async def process_next_route(
+        request: Request,
+        x_api_key: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        return await process_next(x_api_key=x_api_key, request=request)
 
     @app.post("/crm/sync-approved")
     async def sync_approved_crm_drafts(x_api_key: str | None = Header(default=None)) -> dict[str, list[str]]:
@@ -306,6 +441,16 @@ def _update_slack_review_message(
     if chat_update_error:
         result["chat_update_error"] = chat_update_error
     return result
+
+
+def _rate_limit_key(request: Any, x_api_key: str | None) -> str:
+    if x_api_key:
+        return f"api-key:{x_api_key}"
+    client = getattr(request, "client", None)
+    host = getattr(client, "host", None)
+    if host:
+        return f"ip:{host}"
+    return "direct-call"
 
 
 def _slack_channel_id(payload: dict[str, Any]) -> str | None:

@@ -78,6 +78,9 @@ Implemented:
 - GitHub Actions CI that runs the offline unit test suite without secrets.
 - GitHub Actions deploy workflow that triggers Render only after tests pass.
 - Versioned database migrations with `schema_migrations` tracking.
+- Structured request logging with `X-Request-Id` tracing.
+- Single-instance in-memory rate limiting for demo/API protection.
+- API-key-protected deep health check for database reachability.
 
 Next manual setup:
 
