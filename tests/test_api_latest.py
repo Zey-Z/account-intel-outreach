@@ -150,6 +150,37 @@ class ApiLatestRunTests(unittest.TestCase):
         self.assertEqual(caught.exception.headers["Retry-After"], "60")
         self.assertEqual(recovered["status"], "queued")
 
+    def test_worker_endpoint_uses_same_rate_limiter(self):
+        class FakeClock:
+            def __init__(self):
+                self.current = 2000.0
+
+            def __call__(self):
+                return self.current
+
+        class FakeWorker:
+            def __init__(self, db, icp_path):
+                self.db = db
+                self.icp_path = icp_path
+
+            def process_next(self):
+                return None
+
+        async def fake_to_thread(func):
+            return func()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            main.DATABASE_URL = f"sqlite:///{Path(tmp) / 'api.db'}"
+            main.reset_rate_limiter(clock=FakeClock(), limit=1)
+            with patch("main.Worker", FakeWorker):
+                with patch("main.to_thread", fake_to_thread):
+                    first = asyncio.run(main.process_next())
+                    with self.assertRaises(main.HTTPException) as caught:
+                        asyncio.run(main.process_next())
+
+        self.assertEqual(first, {"processed_run_id": None})
+        self.assertEqual(caught.exception.status_code, 429)
+
     def test_deep_health_returns_degraded_when_database_query_fails(self):
         from fastapi.testclient import TestClient
 
@@ -172,6 +203,15 @@ class ApiLatestRunTests(unittest.TestCase):
         self.assertEqual(body["status"], "degraded")
         self.assertEqual(body["db_dialect"], "sqlite")
         self.assertGreaterEqual(body["db_latency_ms"], 0)
+
+    def test_deep_health_requires_api_key_when_configured(self):
+        from fastapi.testclient import TestClient
+
+        main.API_KEY = "test-secret"
+
+        response = TestClient(main.app).get("/health/deep")
+
+        self.assertEqual(response.status_code, 401)
 
     def test_latest_run_rejects_missing_api_key_when_configured(self):
         main.API_KEY = "test-secret"
