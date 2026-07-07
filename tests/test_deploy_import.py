@@ -49,6 +49,37 @@ class DeployImportTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn("ok", result.stdout)
 
+    def test_docker_artifacts_define_optional_uvicorn_runtime(self):
+        project_root = Path(__file__).resolve().parents[1]
+
+        dockerfile = (project_root / "Dockerfile").read_text(encoding="utf-8")
+        dockerignore = (project_root / ".dockerignore").read_text(encoding="utf-8")
+
+        self.assertIn("FROM python:3.12-slim", dockerfile)
+        self.assertIn("pip install --no-cache-dir -r requirements.txt", dockerfile)
+        self.assertIn('["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]', dockerfile)
+        self.assertIn(".env", dockerignore)
+        self.assertIn("data/", dockerignore)
+        self.assertIn(".git", dockerignore)
+
+    def test_production_readiness_doc_covers_real_tradeoffs(self):
+        project_root = Path(__file__).resolve().parents[1]
+
+        document = (project_root / "docs" / "PRODUCTION_READINESS.md").read_text(encoding="utf-8")
+
+        required_terms = [
+            "test-gated deploy",
+            "schema_migrations",
+            "X-Request-Id",
+            "Redis",
+            "Render free tier",
+            "SQLite locally",
+            "no WAF/CDN",
+        ]
+        for term in required_terms:
+            with self.subTest(term=term):
+                self.assertIn(term, document)
+
 
 if __name__ == "__main__":
     unittest.main()

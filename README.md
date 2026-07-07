@@ -94,6 +94,17 @@ you are learning the system from scratch. Use
 [docs/NEXT_STAGE_REAL_CREWAI_TAVILY.md](docs/NEXT_STAGE_REAL_CREWAI_TAVILY.md)
 when you are ready to replace the offline fixture with live CrewAI and Tavily.
 
+## Production Deployment
+
+The repo includes a production-readiness path for the demo deployment: GitHub
+Actions runs the offline unit test suite without secrets, the deploy workflow is
+gated by passing tests before it can call Render, and the database schema is
+versioned through `schema_migrations`. The API also includes structured
+`X-Request-Id` logs, demo-safe rate limiting, and a protected deep health check.
+
+See [docs/PRODUCTION_READINESS.md](docs/PRODUCTION_READINESS.md) for the honest
+readiness boundary and known limitations.
+
 ## Claim Boundaries
 
 Safe claim after full setup:
@@ -106,3 +117,10 @@ Safe claim after full setup:
 
 Do not claim production rollout, HIPAA compliance, clinical validation, patient
 impact, or automated email sending.
+
+Additional truthful engineering claims after the current setup:
+
+- Automated tests gate CI and the Render deploy workflow through GitHub Actions.
+- Database schema changes are versioned through migrations.
+- API requests include structured request logs and `X-Request-Id` tracing.
+- The public write/worker endpoints include single-instance demo rate limiting.

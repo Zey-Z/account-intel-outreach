@@ -146,6 +146,38 @@ Expected response:
 {"run_id":"...","status":"queued"}
 ```
 
+## Alternative: Docker
+
+The live demo currently uses Render's Python runtime. Docker is an optional
+alternative path and does not change `render.yaml`.
+
+Build locally:
+
+```powershell
+docker build -t account-intel-outreach .
+```
+
+Run locally with offline defaults:
+
+```powershell
+docker run --rm -p 8000:8000 account-intel-outreach
+```
+
+Run with a local environment file:
+
+```powershell
+docker run --rm -p 8000:8000 --env-file .env account-intel-outreach
+```
+
+Then open:
+
+```text
+http://localhost:8000/health
+```
+
+This path is included to demonstrate containerization. It has not replaced the
+current Render deployment.
+
 ## Important Boundary
 
 Render hosting is demo deployment, not production proof. A production system

@@ -763,3 +763,27 @@ Progress completed:
 - Added a single-instance sliding-window rate limiter on `POST /runs` and `POST /worker/process-next`.
 - Added `GET /health/deep`, protected by `X-API-Key`, with database latency and degraded-mode reporting.
 - Added tests for request logging, rate limiting, and degraded deep health behavior.
+
+## 2026-07-06 - Docker Path and Production Readiness Writeup
+
+Decision:
+
+Add an optional Docker container path and a plain-language production readiness document.
+
+Why:
+
+The live demo still runs on Render's Python runtime, but a production-minded project should show that the app can also be packaged in a standard container. The readiness document makes the engineering boundary explicit: what is hardened, what is demo-grade, and what should not be overclaimed.
+
+Plain English:
+
+Docker is the moving box for the app. The production readiness document is the inspection report: it says which safety checks exist and which parts are still lightweight.
+
+Progress completed:
+
+- Added a root `Dockerfile` using Python 3.12 slim and `uvicorn main:app`.
+- Added `.dockerignore` so local secrets, Git metadata, and local database files are not copied into the image.
+- Added optional Docker build/run instructions to `docs/DEPLOY_RENDER_NEON.md`.
+- Added `docs/PRODUCTION_READINESS.md` covering CI/CD, migrations, request tracing, rate limiting, deep health, containerization, and known limitations.
+- Added `LOG_LEVEL` and `RATE_LIMIT_PER_MINUTE` to environment templates.
+- Updated `README.md` with a Production Deployment section while keeping claim boundaries intact.
+- Added tests that guard the Docker artifacts and production readiness document.

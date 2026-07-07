@@ -32,6 +32,8 @@
 - Structured API request logging with per-request `X-Request-Id`.
 - In-memory rate limiting on public write/worker endpoints.
 - API-key-protected deep health check for database reachability.
+- Optional Docker containerization path.
+- Production readiness documentation with known limitations.
 - BI-ready SQL views.
 - Human-readable run report script.
 - Integration boundary tests for Slack signature verification and HubSpot note
