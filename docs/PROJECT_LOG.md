@@ -787,3 +787,32 @@ Progress completed:
 - Added `LOG_LEVEL` and `RATE_LIMIT_PER_MINUTE` to environment templates.
 - Updated `README.md` with a Production Deployment section while keeping claim boundaries intact.
 - Added tests that guard the Docker artifacts and production readiness document.
+
+## 2026-07-09 - Automated Deploy Hook and Atomic Worker Claiming
+
+Decision:
+
+Connect GitHub's test-gated deploy workflow to Render and make queue pickup an
+atomic database operation.
+
+Why:
+
+The tests were green, but GitHub could not trigger Render because the encrypted
+deploy-hook secret was missing. The worker also selected a queued run before
+changing its status, which meant two workers could select the same run at the
+same time.
+
+Plain English:
+
+GitHub now has the private doorbell for Render. The worker queue also works like
+a sign-out desk: only one worker can take a folder, even if two ask at once.
+
+Progress completed:
+
+- Stored Render's Deploy Hook as the GitHub Actions secret
+  `RENDER_DEPLOY_HOOK_URL` and re-ran the failed deploy workflow successfully.
+- Added `Database.claim_next_queued_run()` with SQLite and Postgres locking.
+- Stored a `run_claimed` event in the same transaction as the status change.
+- Added query indexes for queue, company, finding, draft, and event lookups.
+- Added a two-worker concurrency regression test.
+- Updated official GitHub Actions to Node 24-compatible major versions.

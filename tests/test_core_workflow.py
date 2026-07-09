@@ -1,8 +1,10 @@
 import tempfile
 import sys
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from pathlib import Path
+from threading import Barrier
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -140,6 +142,34 @@ class CoreWorkflowTests(unittest.TestCase):
         self.assertEqual(events[0]["event_type"], "research_started")
         self.assertEqual(events[0]["payload"]["company_count"], 1)
 
+    def test_database_claims_a_queued_run_only_once_across_workers(self):
+        from account_intel.db import Database
+
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = Path(tmp) / "workflow.db"
+            db = Database(f"sqlite:///{db_path}")
+            db.initialize()
+            run_id = db.create_run(
+                triggered_by="concurrency-test",
+                icp_profile="healthcare_insurance_ops",
+                companies=[{"name": "Northstar Health", "domain": "northstar.example"}],
+            )
+            barrier = Barrier(2)
+
+            def claim() -> dict | None:
+                barrier.wait()
+                return Database(f"sqlite:///{db_path}").claim_next_queued_run()
+
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                results = list(pool.map(lambda _index: claim(), range(2)))
+
+            claimed_ids = [result["run_id"] for result in results if result is not None]
+            events = db.list_events(run_id)
+
+        self.assertEqual(claimed_ids, [run_id])
+        self.assertEqual(sum(result is None for result in results), 1)
+        self.assertEqual([event["event_type"] for event in events], ["run_claimed"])
+
     def test_database_migrations_are_idempotent(self):
         from account_intel.db import Database
 
@@ -152,7 +182,10 @@ class CoreWorkflowTests(unittest.TestCase):
             with db.connect() as conn:
                 rows = conn.execute("SELECT id FROM schema_migrations ORDER BY id").fetchall()
 
-        self.assertEqual([row["id"] for row in rows], ["0001_init.sql"])
+        self.assertEqual(
+            [row["id"] for row in rows],
+            ["0001_init.sql", "0002_query_indexes.sql"],
+        )
 
     def test_database_migrations_apply_incrementally_in_filename_order(self):
         from account_intel.db import Database

@@ -55,7 +55,7 @@ class Database:
         if self.backend == "sqlite":
             assert self.path is not None
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            conn = sqlite3.connect(self.path)
+            conn = sqlite3.connect(self.path, timeout=30.0)
             conn.row_factory = sqlite3.Row
         else:
             try:
@@ -169,6 +169,46 @@ class Database:
                 "SELECT * FROM runs WHERE status = 'queued' ORDER BY started_at LIMIT 1"
             ).fetchone()
             return dict(row) if row else None
+
+    def claim_next_queued_run(self) -> dict[str, Any] | None:
+        """Atomically move one queued run to researching and return it."""
+        with self.connect() as conn:
+            if self.backend == "sqlite":
+                # SQLite has one writer at a time. Taking the write lock before
+                # selecting prevents two local workers from seeing the same run.
+                conn.execute("BEGIN IMMEDIATE")
+                row = conn.execute(
+                    "SELECT * FROM runs WHERE status = 'queued' ORDER BY started_at LIMIT 1"
+                ).fetchone()
+            else:
+                # Postgres can skip a row already claimed by another worker.
+                row = conn.execute(
+                    """
+                    SELECT * FROM runs
+                    WHERE status = 'queued'
+                    ORDER BY started_at
+                    FOR UPDATE SKIP LOCKED
+                    LIMIT 1
+                    """
+                ).fetchone()
+            if row is None:
+                return None
+
+            run = dict(row)
+            cursor = conn.execute(
+                "UPDATE runs SET status = 'researching' WHERE run_id = ? AND status = 'queued'",
+                (run["run_id"],),
+            )
+            if cursor.rowcount != 1:
+                return None
+            self._insert_event(
+                conn,
+                run["run_id"],
+                "run_claimed",
+                {"previous_status": "queued", "status": "researching"},
+            )
+            run["status"] = "researching"
+            return run
 
     def update_run_status(self, run_id: str, status: str) -> None:
         if status not in VALID_STATUSES:
@@ -416,15 +456,25 @@ class Database:
         payload: dict[str, Any],
         company_id: str | None = None,
     ) -> str:
-        event_id = str(uuid.uuid4())
         with self.connect() as conn:
-            conn.execute(
-                """
-                INSERT INTO run_events(event_id, run_id, company_id, event_type, payload, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (event_id, run_id, company_id, event_type, json.dumps(payload), now_iso()),
-            )
+            return self._insert_event(conn, run_id, event_type, payload, company_id)
+
+    @staticmethod
+    def _insert_event(
+        conn: "ConnectionAdapter",
+        run_id: str,
+        event_type: str,
+        payload: dict[str, Any],
+        company_id: str | None = None,
+    ) -> str:
+        event_id = str(uuid.uuid4())
+        conn.execute(
+            """
+            INSERT INTO run_events(event_id, run_id, company_id, event_type, payload, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (event_id, run_id, company_id, event_type, json.dumps(payload), now_iso()),
+        )
         return event_id
 
     def list_events(self, run_id: str) -> list[dict[str, Any]]:

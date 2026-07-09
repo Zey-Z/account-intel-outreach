@@ -33,6 +33,16 @@ This lets the same startup path work for local SQLite and cloud Postgres.
 Plain English: the database keeps a checklist of structure updates, so future
 schema changes can be replayed in order instead of being guessed manually.
 
+## Atomic Worker Claiming
+
+Before processing starts, a worker atomically changes one run from `queued` to
+`researching`. Postgres uses a row lock that skips work already claimed by
+another worker; local SQLite takes a short write lock. The claim and its
+`run_claimed` audit event are stored in the same database transaction.
+
+Plain English: two workers may reach for the same folder, but only one can sign
+it out. This prevents duplicate research and duplicate drafts.
+
 ## Structured Logging And Request Tracing
 
 The FastAPI service emits one structured JSON log line per request. Each log
@@ -90,7 +100,8 @@ makes the app easier to move to another stage later.
   Postgres.
 - The rate limiter is in memory, so it is single-instance only.
 - There is no WAF/CDN layer in front of the API.
-- The worker poller is a lightweight demo/internal runner, not a durable queue.
+- Worker claiming prevents duplicate pickup, but the in-process poller is still
+  a lightweight demo/internal runner rather than a supervised durable queue.
 - Secrets and dashboard settings still require owner-managed setup.
 - The project uses public company data only. It does not process PHI or patient
   data.

@@ -33,13 +33,12 @@ class Worker:
         self.hubspot_client = hubspot_client if hubspot_client is not None else self._hubspot_client_from_env()
 
     def process_next(self) -> str | None:
-        run = self.db.next_queued_run()
+        run = self.db.claim_next_queued_run()
         if run is None:
             return None
         run_id = run["run_id"]
         profiles = load_icp_profiles(self.icp_path)
         profile = profiles[run["icp_profile"]]
-        self.db.update_run_status(run_id, "researching")
         self.db.log_event(run_id, "worker_started", {"icp_profile": profile.key})
         try:
             final_status = "archived"
