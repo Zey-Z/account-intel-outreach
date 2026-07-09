@@ -856,3 +856,31 @@ Progress completed:
   zero-retry result.
 - Recorded Docker user, endpoint, and built-in health-check evidence.
 - Kept the pending human Slack decision and Power BI artifact explicit.
+
+## 2026-07-09 - Correct BI Metric Grain
+
+Decision:
+
+Aggregate company, finding, analysis, and draft metrics separately before
+joining them into the Power BI views.
+
+Why:
+
+The original views joined one company to all of its findings before averaging
+company-level scores. A company with more findings could therefore receive more
+weight in fit and confidence averages, and its draft could be counted more than
+once.
+
+Plain English:
+
+A student should appear once in the class average even if they submitted more
+homework pages. The dashboard now counts each business object at the level where
+it actually exists.
+
+Progress completed:
+
+- Added migration `0003_fix_bi_view_fanout.sql` for SQLite and PostgreSQL.
+- Corrected average fit, analysis confidence, draft confidence, and review-route
+  counts.
+- Added a regression test with unequal finding counts to prove that company
+  metrics are not duplicated.

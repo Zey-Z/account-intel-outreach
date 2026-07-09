@@ -29,6 +29,77 @@ class ReportingAndIntegrationTests(unittest.TestCase):
             self.assertIn("agent_quality_view", view_names)
             self.assertIn("cost_latency_view", view_names)
 
+    def test_power_bi_views_do_not_weight_company_metrics_by_finding_count(self):
+        from account_intel.db import Database, now_iso
+
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Database(f"sqlite:///{Path(tmp) / 'workflow.db'}")
+            db.initialize()
+            run_id = db.create_run(
+                triggered_by="unit-test",
+                icp_profile="healthcare_insurance_ops",
+                companies=[
+                    {"name": "One Finding Health", "domain": "one.example"},
+                    {"name": "Three Finding Health", "domain": "three.example"},
+                ],
+            )
+            companies = db.list_companies(run_id)
+            finding_counts = [1, 3]
+            fit_scores = [100, 0]
+            analysis_confidences = [0.9, 0.5]
+            draft_confidences = [0.8, 0.4]
+            review_flags = ["ready_for_review", "needs_human_review"]
+
+            for index, company in enumerate(companies):
+                findings = [
+                    {
+                        "claim": f"Grounded finding {finding_index}",
+                        "source_url": f"https://example.com/{index}/{finding_index}",
+                        "source_type": "company_website",
+                        "retrieved_at": now_iso(),
+                        "grounding_passed": True,
+                    }
+                    for finding_index in range(finding_counts[index])
+                ]
+                db.save_research_findings(company["company_id"], findings)
+                db.save_analysis(
+                    company["company_id"],
+                    "healthcare_insurance_ops",
+                    {
+                        "fit_score": fit_scores[index],
+                        "pain_point_match": "test",
+                        "buying_trigger": "test",
+                        "risk_flags": [],
+                        "recommended_angle": "test",
+                        "confidence": analysis_confidences[index],
+                    },
+                )
+                db.save_outreach_draft(
+                    company["company_id"],
+                    {
+                        "subject": "Test draft",
+                        "body": "Human-reviewed test draft.",
+                        "confidence": draft_confidences[index],
+                        "review_flag": review_flags[index],
+                        "evidence_refs": [],
+                    },
+                    "sent_to_review",
+                )
+
+            with db.connect() as conn:
+                lead_row = conn.execute(
+                    "SELECT * FROM lead_runs_view WHERE run_id = ?", (run_id,)
+                ).fetchone()
+                quality_row = conn.execute(
+                    "SELECT * FROM agent_quality_view WHERE run_id = ?", (run_id,)
+                ).fetchone()
+
+            self.assertAlmostEqual(lead_row["average_fit_score"], 50.0)
+            self.assertAlmostEqual(quality_row["average_analysis_confidence"], 0.7)
+            self.assertAlmostEqual(quality_row["average_draft_confidence"], 0.6)
+            self.assertEqual(quality_row["ready_for_review_count"], 1)
+            self.assertEqual(quality_row["needs_human_review_count"], 1)
+
     def test_build_run_report_summarizes_run_drafts_and_events(self):
         from account_intel.db import Database
         from account_intel.reporting import build_run_report
