@@ -98,10 +98,15 @@ whether the filing cabinet inside is reachable.
 
 The repository includes an optional Docker path. The live Render config still
 uses Render's Python runtime. The Dockerfile exists to show that the service can
-also be packaged as a standard container.
+also be packaged as a standard container. The image runs as an unprivileged
+`appuser` and includes a container health check against `/health`.
+
+The image was built from a clean Python 3.12 base and started locally on
+2026-07-09; its containerized `/health` endpoint returned HTTP 200.
 
 Plain English: Render is the current stage. Docker is the shipping box that
-makes the app easier to move to another stage later.
+makes the app easier to move to another stage later. The app does not get the
+master key to the box, and the box checks that the app is still awake.
 
 ## Known Limitations
 

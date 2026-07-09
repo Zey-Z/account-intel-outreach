@@ -57,6 +57,8 @@ class DeployImportTests(unittest.TestCase):
 
         self.assertIn("FROM python:3.12-slim", dockerfile)
         self.assertIn("pip install --no-cache-dir -r requirements.txt", dockerfile)
+        self.assertIn("USER appuser", dockerfile)
+        self.assertIn("HEALTHCHECK", dockerfile)
         self.assertIn('["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]', dockerfile)
         self.assertIn(".env", dockerignore)
         self.assertIn("data/", dockerignore)

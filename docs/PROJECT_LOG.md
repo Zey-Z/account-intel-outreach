@@ -823,3 +823,36 @@ Progress completed:
 - Added API validation for company names and ICP profile keys.
 - Moved worker setup inside failure handling so malformed queued runs become
   visible `failed` runs with retry counts and events instead of getting stuck.
+- Built the Docker image from a clean Python base and started a real container;
+  `/health` returned HTTP 200.
+- Removed the unused `crewai-tools` top-level dependency.
+- Hardened the Docker runtime with an unprivileged user and built-in health
+  check.
+
+## 2026-07-09 - Dated Live Verification Record
+
+Decision:
+
+Keep a dated, evidence-based record of the exact CI, cloud, workflow, and
+container checks that were completed.
+
+Why:
+
+A portfolio project should distinguish implemented code from behavior that was
+actually observed in the deployed environment. This also keeps test-context
+metrics from turning into unsupported production claims later.
+
+Plain English:
+
+This is the project's inspection sticker. It lists what was tested, when it was
+tested, and what still needs a human decision.
+
+Progress completed:
+
+- Added `docs/LIVE_VERIFICATION.md` with GitHub Actions run evidence.
+- Recorded live Render health, runtime, invalid-input, and Neon-backed workflow
+  checks.
+- Recorded the Oscar Health smoke run, its grounded findings, review route, and
+  zero-retry result.
+- Recorded Docker user, endpoint, and built-in health-check evidence.
+- Kept the pending human Slack decision and Power BI artifact explicit.

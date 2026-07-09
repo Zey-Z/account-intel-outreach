@@ -101,7 +101,9 @@ versioned through `schema_migrations`. The API also includes structured
 `X-Request-Id` logs, demo-safe rate limiting, and a protected deep health check.
 
 See [docs/PRODUCTION_READINESS.md](docs/PRODUCTION_READINESS.md) for the honest
-readiness boundary and known limitations.
+readiness boundary and known limitations. See
+[docs/LIVE_VERIFICATION.md](docs/LIVE_VERIFICATION.md) for dated CI, deployment,
+live workflow, and container verification evidence.
 
 ## Claim Boundaries
 
