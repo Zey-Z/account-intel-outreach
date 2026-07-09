@@ -96,6 +96,41 @@ class ApiLatestRunTests(unittest.TestCase):
 
         self.assertEqual(created["status"], "queued")
 
+    def test_create_run_rejects_unknown_icp_profile(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            main.DATABASE_URL = f"sqlite:///{Path(tmp) / 'api.db'}"
+
+            with self.assertRaises(main.HTTPException) as caught:
+                asyncio.run(
+                    main.create_run(
+                        {
+                            "company_name": "Oscar Health",
+                            "domain": "hioscar.com",
+                            "icp_profile": "missing_profile",
+                        }
+                    )
+                )
+
+        self.assertEqual(caught.exception.status_code, 400)
+        self.assertIn("Unknown ICP profile", caught.exception.detail)
+
+    def test_create_run_rejects_company_without_name(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            main.DATABASE_URL = f"sqlite:///{Path(tmp) / 'api.db'}"
+
+            with self.assertRaises(main.HTTPException) as caught:
+                asyncio.run(
+                    main.create_run(
+                        {
+                            "companies": [{"domain": "hioscar.com"}],
+                            "icp_profile": "healthcare_insurance_ops",
+                        }
+                    )
+                )
+
+        self.assertEqual(caught.exception.status_code, 400)
+        self.assertIn("requires a name", caught.exception.detail)
+
     def test_request_logging_middleware_emits_structured_record_and_header(self):
         from fastapi.testclient import TestClient
 

@@ -37,10 +37,10 @@ class Worker:
         if run is None:
             return None
         run_id = run["run_id"]
-        profiles = load_icp_profiles(self.icp_path)
-        profile = profiles[run["icp_profile"]]
-        self.db.log_event(run_id, "worker_started", {"icp_profile": profile.key})
         try:
+            profiles = load_icp_profiles(self.icp_path)
+            profile = profiles[run["icp_profile"]]
+            self.db.log_event(run_id, "worker_started", {"icp_profile": profile.key})
             final_status = "archived"
             successful_companies = 0
             last_company_error: Exception | None = None

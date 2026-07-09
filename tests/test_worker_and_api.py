@@ -136,6 +136,29 @@ class WorkerAndApiTests(unittest.TestCase):
         self.assertTrue(any(event["event_type"] == "company_failed" for event in events))
         self.assertTrue(any(event["event_type"] == "worker_failed" for event in events))
 
+    def test_worker_marks_invalid_icp_run_failed_instead_of_leaving_it_claimed(self):
+        from account_intel.db import Database
+        from account_intel.worker import Worker
+
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Database(f"sqlite:///{Path(tmp) / 'workflow.db'}")
+            db.initialize()
+            run_id = db.create_run(
+                triggered_by="unit-test",
+                icp_profile="missing_profile",
+                companies=[{"name": "Broken Health", "domain": "broken.example"}],
+            )
+
+            with self.assertRaises(KeyError):
+                Worker(db=db, offline=True).process_next()
+
+            run = db.get_run(run_id)
+            events = db.list_events(run_id)
+
+        self.assertEqual(run["status"], "failed")
+        self.assertEqual(run["retry_count"], 1)
+        self.assertTrue(any(event["event_type"] == "worker_failed" for event in events))
+
     def test_request_changes_rewrites_once_and_returns_to_review(self):
         from account_intel.db import Database
         from account_intel.worker import Worker

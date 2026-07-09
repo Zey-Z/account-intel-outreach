@@ -816,3 +816,10 @@ Progress completed:
 - Added query indexes for queue, company, finding, draft, and event lookups.
 - Added a two-worker concurrency regression test.
 - Updated official GitHub Actions to Node 24-compatible major versions.
+- Completed HubSpot Company lookup/create and associated approved Notes with the
+  correct Company record using HubSpot's default Note-to-Company relationship.
+- Added bounded retry handling for temporary HubSpot rate-limit and server
+  errors, while keeping failed syncs in the existing catch-up workflow.
+- Added API validation for company names and ICP profile keys.
+- Moved worker setup inside failure handling so malformed queued runs become
+  visible `failed` runs with retry counts and events instead of getting stuck.

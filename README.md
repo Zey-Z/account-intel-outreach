@@ -69,8 +69,9 @@ Implemented:
 - Worker that processes queued runs.
 - FastAPI endpoint definitions.
 - Live Slack human-review workflow.
-- Approved-only HubSpot note sync path.
+- Approved-only HubSpot Company lookup and associated Note sync path.
 - Retry endpoint and company-level failure isolation.
+- Atomic worker claiming that prevents duplicate queue pickup.
 - Optional in-process worker poller for demo/internal processing.
 - Eval runner and BI-ready views.
 - API-key-protected CSV reporting endpoints.
@@ -82,12 +83,9 @@ Implemented:
 - Single-instance in-memory rate limiting for demo/API protection.
 - API-key-protected deep health check for database reachability.
 
-Next manual setup:
+Optional portfolio finish:
 
-- Turn on real CrewAI runtime in Render after setting LLM credentials.
 - Build Power BI dashboard from the database views.
-- Add the `RENDER_DEPLOY_HOOK_URL` GitHub secret if automatic deploys are not
-  configured yet.
 
 Start with [docs/CLASSROOM_WALKTHROUGH.md](docs/CLASSROOM_WALKTHROUGH.md) if
 you are learning the system from scratch. Use
@@ -112,7 +110,8 @@ Safe claim after full setup:
 > Built a CrewAI-based account intelligence workflow that researches healthcare
 > and insurance target accounts, scores ICP fit using configurable profiles,
 > drafts source-grounded outreach, routes drafts through human approval, stores
-> run state in PostgreSQL-shaped tables, syncs approved drafts to HubSpot notes,
+> run state in PostgreSQL, syncs approved drafts to Company-associated HubSpot
+> notes,
 > and exposes BI-ready reporting views and CSV exports.
 
 Do not claim production rollout, HIPAA compliance, clinical validation, patient
@@ -124,3 +123,5 @@ Additional truthful engineering claims after the current setup:
 - Database schema changes are versioned through migrations.
 - API requests include structured request logs and `X-Request-Id` tracing.
 - The public write/worker endpoints include single-instance demo rate limiting.
+- Database-backed worker claiming prevents duplicate pickup of the same queued
+  run.

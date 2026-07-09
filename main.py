@@ -20,6 +20,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from account_intel.db import Database
 from account_intel.env import load_local_env
+from account_intel.config import load_icp_profiles
 from account_intel.reporting import build_run_report
 from account_intel.worker import Worker
 
@@ -223,11 +224,28 @@ try:
             companies = [{"name": payload["company_name"], "domain": payload.get("domain")}]
         if not companies:
             raise HTTPException(status_code=400, detail="Provide companies or company_name.")
+        normalized_companies = []
+        for index, company in enumerate(companies):
+            if not isinstance(company, dict):
+                raise HTTPException(status_code=400, detail=f"Company at index {index} must be an object.")
+            name = str(company.get("name") or "").strip()
+            if not name:
+                raise HTTPException(status_code=400, detail=f"Company at index {index} requires a name.")
+            normalized_companies.append(
+                {
+                    "name": name,
+                    "domain": str(company.get("domain") or "").strip() or None,
+                    "segment": str(company.get("segment") or "").strip() or None,
+                }
+            )
+        icp_profile = str(payload.get("icp_profile") or "healthcare_insurance_ops").strip()
+        if icp_profile not in load_icp_profiles(ICP_PATH):
+            raise HTTPException(status_code=400, detail=f"Unknown ICP profile: {icp_profile}")
         db = get_db()
         run_id = db.create_run(
             triggered_by=payload.get("triggered_by", "api"),
-            icp_profile=payload.get("icp_profile", "healthcare_insurance_ops"),
-            companies=companies,
+            icp_profile=icp_profile,
+            companies=normalized_companies,
         )
         return {"run_id": run_id, "status": "queued"}
 

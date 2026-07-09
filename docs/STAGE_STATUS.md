@@ -10,13 +10,12 @@
 - Grounding validation.
 - Analyst scoring.
 - Writer evidence check.
-- SQLite system of record with Postgres-shaped schema.
-- Worker that processes queued runs.
+- SQLite local development plus Neon PostgreSQL cloud system of record.
+- Worker with atomic database-backed queue claiming.
 - FastAPI endpoint definitions.
 - Zapier entry trigger path.
 - Live Slack human-review workflow.
-- HubSpot integration boundary.
-- Approved-only HubSpot note sync path.
+- Approved-only HubSpot Company lookup plus associated Note sync path.
 - Idempotent CRM catch-up endpoint for approved drafts.
 - API retry endpoint for failed runs.
 - Company-level worker failure isolation.
@@ -28,6 +27,7 @@
 - Exact pinned Python dependency versions.
 - GitHub Actions CI for the offline unit test suite.
 - GitHub Actions deploy workflow gated by the test suite.
+- Encrypted Render Deploy Hook connected to GitHub Actions.
 - Versioned database migrations with `schema_migrations` tracking.
 - Structured API request logging with per-request `X-Request-Id`.
 - In-memory rate limiting on public write/worker endpoints.
@@ -39,12 +39,10 @@
 - Integration boundary tests for Slack signature verification and HubSpot note
   payload generation.
 
-## Not Yet Connected
+## Remaining Portfolio Artifact
 
-- Live CrewAI runtime smoke test with an LLM key.
-- Power BI `.pbix` file.
-- GitHub secret `RENDER_DEPLOY_HOOK_URL` for automatic Render deploys, if not
-  already configured.
+- Power BI `.pbix` dashboard file. The four protected CSV endpoints and SQL
+  views it will read are already implemented.
 
 ## Why This Is Still Useful
 

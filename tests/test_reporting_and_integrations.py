@@ -195,6 +195,77 @@ class ReportingAndIntegrationTests(unittest.TestCase):
         self.assertIsInstance(timestamp, str)
         self.assertTrue(timestamp.isdigit())
 
+    def test_hubspot_sync_finds_company_and_associates_note(self):
+        from account_intel.integrations.hubspot import HubSpotClient
+
+        calls = []
+        responses = [
+            {"results": [{"id": "company-123"}]},
+            {"id": "note-456"},
+        ]
+
+        def fake_request(url, token, method, payload, timeout_seconds):
+            calls.append(
+                {
+                    "url": url,
+                    "token": token,
+                    "method": method,
+                    "payload": payload,
+                    "timeout_seconds": timeout_seconds,
+                }
+            )
+            return responses.pop(0)
+
+        client = HubSpotClient(token="private-token", request_json=fake_request)
+        note_id = client.create_note(
+            "Northstar Health",
+            {
+                "company_domain": "northstar.example",
+                "subject": "Workflow idea",
+                "body": "A human-approved draft.",
+            },
+            ["https://northstar.example/about"],
+        )
+
+        self.assertEqual(note_id, "note-456")
+        self.assertTrue(calls[0]["url"].endswith("/crm/v3/objects/companies/search"))
+        self.assertEqual(
+            calls[0]["payload"]["filterGroups"][0]["filters"][0],
+            {"propertyName": "domain", "operator": "EQ", "value": "northstar.example"},
+        )
+        self.assertTrue(calls[1]["url"].endswith("/crm/v3/objects/notes"))
+        association = calls[1]["payload"]["associations"][0]
+        self.assertEqual(association["to"]["id"], "company-123")
+        self.assertEqual(association["types"][0]["associationTypeId"], 190)
+
+    def test_hubspot_sync_creates_company_when_domain_is_not_found(self):
+        from account_intel.integrations.hubspot import HubSpotClient
+
+        calls = []
+        responses = [
+            {"results": []},
+            {"id": "company-new"},
+            {"id": "note-new"},
+        ]
+
+        def fake_request(url, token, method, payload, timeout_seconds):
+            calls.append({"url": url, "payload": payload})
+            return responses.pop(0)
+
+        client = HubSpotClient(token="private-token", request_json=fake_request)
+        note_id = client.create_note(
+            "New Health",
+            {"company_domain": "newhealth.example", "subject": "Idea", "body": "Draft"},
+            [],
+        )
+
+        self.assertEqual(note_id, "note-new")
+        self.assertTrue(calls[1]["url"].endswith("/crm/v3/objects/companies"))
+        self.assertEqual(
+            calls[1]["payload"],
+            {"properties": {"name": "New Health", "domain": "newhealth.example"}},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

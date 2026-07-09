@@ -43,6 +43,16 @@ another worker; local SQLite takes a short write lock. The claim and its
 Plain English: two workers may reach for the same folder, but only one can sign
 it out. This prevents duplicate research and duplicate drafts.
 
+## Approved-Only CRM Filing
+
+After Slack approval, the HubSpot client searches for a company by its public
+domain, creates the company only when needed, and files the approved note on
+that company record. The note keeps its source URLs, and temporary HubSpot
+errors receive bounded retries before the failure is logged for catch-up sync.
+
+Plain English: the approved note is placed in the correct customer folder, not
+left loose in the filing cabinet.
+
 ## Structured Logging And Request Tracing
 
 The FastAPI service emits one structured JSON log line per request. Each log
