@@ -884,3 +884,30 @@ Progress completed:
   counts.
 - Added a regression test with unequal finding counts to prove that company
   metrics are not duplicated.
+
+## 2026-07-09 - Reconcile Review and CRM Status
+
+Decision:
+
+Derive each run's summary status from its draft records after every review and
+CRM transition, and repair stale summaries during service startup.
+
+Why:
+
+The live Slack approval successfully created the HubSpot Note, but the run still
+reported `sent_to_review`. The draft was correct; the batch summary was stale.
+That would mislead API consumers and the Power BI dashboard.
+
+Plain English:
+
+The package had reached its destination, but the tracking page still said
+"waiting for pickup." The system now updates both the package and the tracking
+page, and checks old tracking records whenever it starts.
+
+Progress completed:
+
+- Added run-status reconciliation from authoritative draft states.
+- Added startup repair for previously synced or rejected runs.
+- Added `review_decision_applied` and `run_status_reconciled` audit events.
+- Made repeated approval of an already-synced draft idempotent.
+- Added tests for successful CRM sync, failed CRM sync, and stale-run repair.

@@ -118,11 +118,32 @@ class Worker:
         reviewed_by: str,
         revision_note: str | None = None,
     ) -> None:
+        draft = self.db.get_draft_sync_context(draft_id)
+        run_id = draft["run_id"]
+        if decision == "approved" and draft.get("hubspot_object_id"):
+            self.db.log_event(
+                run_id,
+                "review_decision_ignored",
+                {
+                    "draft_id": draft_id,
+                    "decision": decision,
+                    "reason": "already_synced_to_crm",
+                    "reviewed_by": reviewed_by,
+                },
+                company_id=draft["company_id"],
+            )
+            self.db.refresh_run_status_from_drafts(run_id)
+            return
+
         if decision == "approved":
             self.db.update_draft_review(draft_id, "approved", reviewed_by)
+            self._log_review_decision(draft, decision, reviewed_by, revision_note)
+            self.db.refresh_run_status_from_drafts(run_id)
             self._sync_approved_draft(draft_id)
         elif decision == "rejected":
             self.db.update_draft_review(draft_id, "rejected", reviewed_by)
+            self._log_review_decision(draft, decision, reviewed_by, revision_note)
+            self.db.refresh_run_status_from_drafts(run_id)
         elif decision == "needs_revision":
             self.db.update_draft_review(
                 draft_id,
@@ -131,8 +152,29 @@ class Worker:
                 revision_note=revision_note,
                 increment_revision=True,
             )
+            self._log_review_decision(draft, decision, reviewed_by, revision_note)
+            self.db.refresh_run_status_from_drafts(run_id)
         else:
             raise ValueError(f"Unsupported review decision: {decision}")
+
+    def _log_review_decision(
+        self,
+        draft: dict[str, Any],
+        decision: str,
+        reviewed_by: str,
+        revision_note: str | None,
+    ) -> None:
+        self.db.log_event(
+            draft["run_id"],
+            "review_decision_applied",
+            {
+                "draft_id": draft["draft_id"],
+                "decision": decision,
+                "reviewed_by": reviewed_by,
+                "revision_note": revision_note,
+            },
+            company_id=draft["company_id"],
+        )
 
     def sync_approved_drafts(self) -> dict[str, list[str]]:
         if self.hubspot_client is None:
@@ -156,6 +198,7 @@ class Worker:
         try:
             hubspot_object_id = self.hubspot_client.create_note(draft["company_name"], draft, source_urls)
             self.db.set_draft_hubspot_id(draft_id, hubspot_object_id)
+            self.db.refresh_run_status_from_drafts(run_id)
             self.db.log_event(
                 run_id,
                 "crm_synced",

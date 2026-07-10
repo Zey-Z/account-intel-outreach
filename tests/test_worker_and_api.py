@@ -218,21 +218,34 @@ class WorkerAndApiTests(unittest.TestCase):
             draft = db.list_outreach_drafts(run_id)[0]
             fake_hubspot = FakeHubSpotClient()
 
-            Worker(db=db, offline=True, hubspot_client=fake_hubspot).apply_review_decision(
+            review_worker = Worker(db=db, offline=True, hubspot_client=fake_hubspot)
+            review_worker.apply_review_decision(
+                draft_id=draft["draft_id"],
+                decision="approved",
+                reviewed_by="reviewer@example.com",
+            )
+            review_worker.apply_review_decision(
                 draft_id=draft["draft_id"],
                 decision="approved",
                 reviewed_by="reviewer@example.com",
             )
 
             updated = db.get_outreach_draft(draft["draft_id"])
+            run = db.get_run(run_id)
             events = db.list_events(run_id)
 
         self.assertEqual(updated["status"], "synced_to_crm")
+        self.assertEqual(run["status"], "synced_to_crm")
+        self.assertIsNotNone(run["finished_at"])
         self.assertEqual(updated["hubspot_object_id"], "hubspot-note-123")
+        self.assertEqual(len(fake_hubspot.calls), 1)
         self.assertEqual(fake_hubspot.calls[0]["company_name"], "Northstar Health")
         self.assertIn("subject", fake_hubspot.calls[0]["draft"])
         self.assertGreaterEqual(len(fake_hubspot.calls[0]["source_urls"]), 1)
         self.assertTrue(any(event["event_type"] == "crm_synced" for event in events))
+        self.assertTrue(any(event["event_type"] == "review_decision_applied" for event in events))
+        self.assertTrue(any(event["event_type"] == "review_decision_ignored" for event in events))
+        self.assertTrue(any(event["event_type"] == "run_status_reconciled" for event in events))
 
     def test_hubspot_sync_failure_keeps_draft_approved_and_logs_event(self):
         from account_intel.db import Database
@@ -261,13 +274,45 @@ class WorkerAndApiTests(unittest.TestCase):
             )
 
             updated = db.get_outreach_draft(draft["draft_id"])
+            run = db.get_run(run_id)
             events = db.list_events(run_id)
 
         self.assertEqual(updated["status"], "approved")
+        self.assertEqual(run["status"], "approved")
+        self.assertIsNone(run["finished_at"])
         self.assertIsNone(updated["hubspot_object_id"])
         failure_events = [event for event in events if event["event_type"] == "crm_sync_failed"]
         self.assertEqual(len(failure_events), 1)
         self.assertIn("HubSpot is unavailable", failure_events[0]["payload"]["error"])
+
+    def test_database_startup_reconciles_a_stale_synced_run(self):
+        from account_intel.db import Database
+        from account_intel.worker import Worker
+
+        with tempfile.TemporaryDirectory() as tmp:
+            database_url = f"sqlite:///{Path(tmp) / 'workflow.db'}"
+            db = Database(database_url)
+            db.initialize()
+            run_id = db.create_run(
+                triggered_by="unit-test",
+                icp_profile="healthcare_insurance_ops",
+                companies=[{"name": "Northstar Health", "domain": "northstar.example"}],
+            )
+            Worker(db=db, offline=True).process_next()
+            draft_id = db.list_outreach_drafts(run_id)[0]["draft_id"]
+            db.update_draft_review(draft_id, "approved", "unit-reviewer")
+            db.set_draft_hubspot_id(draft_id, "hubspot-note-existing")
+
+            self.assertEqual(db.get_run(run_id)["status"], "sent_to_review")
+
+            restarted_db = Database(database_url)
+            restarted_db.initialize()
+            run = restarted_db.get_run(run_id)
+            events = restarted_db.list_events(run_id)
+
+        self.assertEqual(run["status"], "synced_to_crm")
+        self.assertIsNotNone(run["finished_at"])
+        self.assertTrue(any(event["event_type"] == "run_status_reconciled" for event in events))
 
     def test_sync_approved_drafts_skips_already_synced_drafts(self):
         from account_intel.db import Database
