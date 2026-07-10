@@ -4,15 +4,23 @@ version = "0.1.0"
 description = "Human-approved AI account intelligence and outreach ops workflow."
 requires-python = ">=3.12"
 dependencies = [
-  "PyYAML>=6.0.3",
-  "fastapi>=0.115.0",
-  "uvicorn>=0.30.0",
-  "python-multipart>=0.0.9",
-  "psycopg2-binary>=2.9.10",
-  "crewai>=0.100.0",
-  "crewai-tools>=0.32.0",
+  "PyYAML==6.0.3",
+  "fastapi==0.136.1",
+  "uvicorn==0.47.0",
+  "python-multipart==0.0.29",
+  "python-dotenv==1.2.2",
+  "psycopg2-binary==2.9.12",
+  "crewai==1.14.6",
+  "tavily-python==0.7.24",
 ]
 
-[tool.pytest.ini_options]
-pythonpath = ["src"]
-testpaths = ["tests"]
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+"main.py" = ["E402"]
+"scripts/*.py" = ["E402"]

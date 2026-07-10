@@ -4,7 +4,6 @@ import re
 
 from account_intel.models import SourceEvidence
 
-
 _STOPWORDS = {
     "about",
     "across",

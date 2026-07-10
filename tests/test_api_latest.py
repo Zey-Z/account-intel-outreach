@@ -301,6 +301,30 @@ class ApiLatestRunTests(unittest.TestCase):
         self.assertIn("run_id,icp_profile,status", body)
         self.assertIn("healthcare_insurance_ops", body)
 
+    def test_dashboard_report_csv_endpoint_is_power_bi_ready(self):
+        from account_intel.db import Database
+
+        with tempfile.TemporaryDirectory() as tmp:
+            main.DATABASE_URL = f"sqlite:///{Path(tmp) / 'api.db'}"
+            main.API_KEY = "test-secret"
+            db = Database(main.DATABASE_URL)
+            db.initialize()
+            db.create_run(
+                triggered_by="unit-test",
+                icp_profile="healthcare_insurance_ops",
+                companies=[{"name": "Northstar Health", "domain": "northstar.example"}],
+            )
+
+            response = asyncio.run(
+                main.get_report_csv("dashboard_runs_view", x_api_key="test-secret")
+            )
+
+        body = response.body.decode("utf-8")
+        self.assertEqual(response.media_type, "text/csv")
+        self.assertIn("run_id,triggered_by,started_at,finished_at", body)
+        self.assertIn("average_fit_score", body)
+        self.assertIn("failure_event_count", body)
+
     def test_report_csv_endpoint_rejects_non_whitelisted_view(self):
         main.API_KEY = "test-secret"
 

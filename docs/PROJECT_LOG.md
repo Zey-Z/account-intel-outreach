@@ -884,3 +884,135 @@ Progress completed:
   counts.
 - Added a regression test with unequal finding counts to prove that company
   metrics are not duplicated.
+
+## 2026-07-09 - Reconcile Review and CRM Status
+
+Decision:
+
+Derive each run's summary status from its draft records after every review and
+CRM transition, and repair stale summaries during service startup.
+
+Why:
+
+The live Slack approval successfully created the HubSpot Note, but the run still
+reported `sent_to_review`. The draft was correct; the batch summary was stale.
+That would mislead API consumers and the Power BI dashboard.
+
+Plain English:
+
+The package had reached its destination, but the tracking page still said
+"waiting for pickup." The system now updates both the package and the tracking
+page, and checks old tracking records whenever it starts.
+
+Progress completed:
+
+- Added run-status reconciliation from authoritative draft states.
+- Added startup repair for previously synced or rejected runs.
+- Added `review_decision_applied` and `run_status_reconciled` audit events.
+- Made repeated approval of an already-synced draft idempotent.
+- Added tests for successful CRM sync, failed CRM sync, and stale-run repair.
+
+## 2026-07-09 - Match Branch Protection with Real CI Checks
+
+Decision:
+
+Implement the three status checks required by the `main` ruleset instead of
+removing the missing `lint` and `build` checks.
+
+Why:
+
+The new ruleset correctly rejected a direct push, but two configured checks did
+not exist. A pull request would therefore wait forever. Real lint and container
+build jobs make the protection both usable and meaningful.
+
+Plain English:
+
+The door had three locks, but only one key existed. We made the other two keys:
+one checks code hygiene, and one proves the shipping container can be built.
+
+Progress completed:
+
+- Added a pinned Ruff lint job named `lint`.
+- Added a Docker image job named `build`.
+- Kept the existing `Unit tests` job for deterministic workflow tests.
+- Aligned `pyproject.toml` dependencies with the deployed requirements.
+
+## 2026-07-09 - Add a Dashboard Consumption View
+
+Decision:
+
+Expose one run-level `dashboard_runs_view` for Power BI while retaining the four
+specialized BI views.
+
+Why:
+
+The existing views intentionally separate workflow, quality, review, and cost
+concerns. Asking a first Power BI report to reproduce those joins would add
+unnecessary modeling risk and could reintroduce duplicated metrics.
+
+Plain English:
+
+The database keeps separate kitchen stations, while the dashboard receives one
+finished plate with exactly one row per workflow run.
+
+Progress completed:
+
+- Added versioned migration `0004_dashboard_runs_view.sql`.
+- Included timing, status, score, evidence, review, token, latency, and failure
+  fields in one run-level view.
+- Exposed the view through the protected CSV reporting endpoint.
+- Added schema and API tests for the Power BI contract.
+
+## 2026-07-09 - Add a Secret-Free Power BI Snapshot
+
+Decision:
+
+Refresh Power BI through a local CSV snapshot generated from protected report
+endpoints instead of storing the Neon password or API key inside the PBIX file.
+
+Why:
+
+The dashboard still needs real deployed data, but portfolio artifacts are public
+and portable. Embedding production credentials in the report would turn a useful
+demo into a secret-distribution problem.
+
+Plain English:
+
+Power BI receives a sealed photocopy of the reporting tables, not the key to the
+database filing cabinet.
+
+Progress completed:
+
+- Added a schema-validating Power BI export module and CLI.
+- Exported the run-level and outreach-performance datasets without storing the
+  API key in the generated files.
+- Added a manifest with refresh time, source, row count, and data classification.
+- Added tests for successful export and schema drift rejection.
+
+## 2026-07-09 - Build the Power BI Control Tower
+
+Decision:
+
+Ship a one-page PBIX artifact built from the secret-free dashboard snapshot,
+with a small set of management-facing KPIs and two diagnostic charts.
+
+Why:
+
+SQL views prove that the data exists, but a business stakeholder should not need
+to write a query to understand workflow volume, quality, delay, or review load.
+The dashboard also needs to remain safe to publish in a portfolio repository.
+
+Plain English:
+
+The database is the warehouse. Power BI is the control-room window: it shows
+what is moving, what is stuck, and where a person should look next, without
+handing every visitor the warehouse keys.
+
+Progress completed:
+
+- Created `powerbi/AI_Account_Intelligence_Dashboard.pbix` in Power BI Desktop.
+- Added six KPIs: total runs, average fit score, grounding rate, average latency,
+  failure events, and human-review volume.
+- Added run-count-by-status and average-fit-score-by-status charts.
+- Kept credentials outside the PBIX through generated CSV snapshots.
+- Verified the latest branch CI passed lint, 82 unit tests, and Docker build.

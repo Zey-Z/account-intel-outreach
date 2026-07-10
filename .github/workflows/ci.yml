@@ -9,6 +9,25 @@ on:
       - main
 
 jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+
+      - name: Install lint dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run Ruff
+        run: ruff check .
+
   test:
     name: Unit tests
     runs-on: ubuntu-latest
@@ -29,3 +48,14 @@ jobs:
         env:
           PYTHONPATH: src
         run: python -m unittest discover -s tests -v
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Build Docker image
+        run: docker build --tag account-intel-outreach:ci .

@@ -12,7 +12,6 @@ import yaml
 
 from account_intel.models import ICPProfile, SourceEvidence
 
-
 _FINDING_KEYWORDS = {
     "analytics",
     "benefits",

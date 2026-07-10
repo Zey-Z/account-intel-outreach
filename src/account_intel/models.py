@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 
-
 ReviewFlag = Literal["ready_for_review", "needs_human_review"]
 
 

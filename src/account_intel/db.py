@@ -8,7 +8,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterator, Protocol
 
-
 VALID_STATUSES = {
     "queued",
     "researching",
@@ -90,6 +89,7 @@ class Database:
                     "INSERT INTO schema_migrations(id, applied_at) VALUES (?, ?)",
                     (migration_id, now_iso()),
                 )
+        self.reconcile_run_statuses()
 
     def _ensure_migration_table(self, conn: "ConnectionAdapter") -> None:
         conn.execute(
@@ -214,11 +214,107 @@ class Database:
         if status not in VALID_STATUSES:
             raise ValueError(f"Invalid run status: {status}")
         with self.connect() as conn:
-            finished_at = now_iso() if status in {"synced_to_crm", "archived", "failed"} else None
+            finished_at = now_iso() if status in {"synced_to_crm", "rejected", "archived", "failed"} else None
             conn.execute(
                 "UPDATE runs SET status = ?, finished_at = COALESCE(?, finished_at) WHERE run_id = ?",
                 (status, finished_at, run_id),
             )
+
+    def reconcile_run_statuses(self) -> None:
+        """Repair stale run summaries from their authoritative draft states."""
+
+        with self.connect() as conn:
+            if self.backend == "sqlite":
+                table_rows = conn.execute(
+                    """
+                    SELECT name
+                    FROM sqlite_master
+                    WHERE type = 'table'
+                      AND name IN ('companies', 'outreach_drafts')
+                    """
+                ).fetchall()
+            else:
+                table_rows = conn.execute(
+                    """
+                    SELECT table_name AS name
+                    FROM information_schema.tables
+                    WHERE table_schema = current_schema()
+                      AND table_name IN ('companies', 'outreach_drafts')
+                    """
+                ).fetchall()
+            if {str(row["name"]) for row in table_rows} != {"companies", "outreach_drafts"}:
+                return
+            rows = conn.execute(
+                """
+                SELECT DISTINCT c.run_id
+                FROM companies c
+                JOIN outreach_drafts d ON d.company_id = c.company_id
+                """
+            ).fetchall()
+        for row in rows:
+            self.refresh_run_status_from_drafts(str(row["run_id"]))
+
+    def refresh_run_status_from_drafts(self, run_id: str) -> str:
+        """Derive a batch-level status without duplicating draft workflow logic."""
+
+        with self.connect() as conn:
+            run = conn.execute(
+                "SELECT status FROM runs WHERE run_id = ?", (run_id,)
+            ).fetchone()
+            if run is None:
+                raise KeyError(run_id)
+            rows = conn.execute(
+                """
+                SELECT d.status
+                FROM outreach_drafts d
+                JOIN companies c ON c.company_id = d.company_id
+                WHERE c.run_id = ?
+                """,
+                (run_id,),
+            ).fetchall()
+            if not rows:
+                return str(run["status"])
+
+            draft_statuses = [str(row["status"]) for row in rows]
+            new_status = self._aggregate_draft_status(draft_statuses)
+            previous_status = str(run["status"])
+            if new_status == previous_status:
+                return new_status
+
+            terminal_statuses = {"synced_to_crm", "rejected", "archived", "failed"}
+            finished_at = now_iso() if new_status in terminal_statuses else None
+            conn.execute(
+                "UPDATE runs SET status = ?, finished_at = ? WHERE run_id = ?",
+                (new_status, finished_at, run_id),
+            )
+            self._insert_event(
+                conn,
+                run_id,
+                "run_status_reconciled",
+                {
+                    "previous_status": previous_status,
+                    "status": new_status,
+                    "draft_statuses": draft_statuses,
+                },
+            )
+            return new_status
+
+    @staticmethod
+    def _aggregate_draft_status(statuses: list[str]) -> str:
+        status_set = set(statuses)
+        if "needs_revision" in status_set:
+            return "needs_revision"
+        if status_set & {"sent_to_review", "draft_created", "validation_failed"}:
+            return "sent_to_review"
+        if "approved" in status_set:
+            return "approved"
+        if "needs_human_research" in status_set:
+            return "needs_human_research"
+        if "synced_to_crm" in status_set:
+            return "synced_to_crm"
+        if "rejected" in status_set:
+            return "rejected"
+        return "archived"
 
     def increment_retry(self, run_id: str) -> None:
         with self.connect() as conn:
