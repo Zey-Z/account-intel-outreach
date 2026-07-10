@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import csv
+import hmac
 import io
 import json
-import hmac
 import logging
 import math
 import os
@@ -18,12 +18,11 @@ from typing import Any, Callable
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
+from account_intel.config import load_icp_profiles
 from account_intel.db import Database
 from account_intel.env import load_local_env
-from account_intel.config import load_icp_profiles
 from account_intel.reporting import build_run_report
 from account_intel.worker import Worker
-
 
 load_local_env(ROOT / ".env")
 

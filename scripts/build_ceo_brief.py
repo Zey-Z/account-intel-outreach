@@ -7,9 +7,8 @@ from reportlab.lib.pagesizes import landscape, letter
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.pdfbase.pdfmetrics import stringWidth
-from reportlab.platypus import Paragraph
 from reportlab.pdfgen import canvas
-
+from reportlab.platypus import Paragraph
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs"

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 KNOWLEDGE_FILES = (
     "approved_messaging.md",
     "product_positioning.md",

@@ -911,3 +911,28 @@ Progress completed:
 - Added `review_decision_applied` and `run_status_reconciled` audit events.
 - Made repeated approval of an already-synced draft idempotent.
 - Added tests for successful CRM sync, failed CRM sync, and stale-run repair.
+
+## 2026-07-09 - Match Branch Protection with Real CI Checks
+
+Decision:
+
+Implement the three status checks required by the `main` ruleset instead of
+removing the missing `lint` and `build` checks.
+
+Why:
+
+The new ruleset correctly rejected a direct push, but two configured checks did
+not exist. A pull request would therefore wait forever. Real lint and container
+build jobs make the protection both usable and meaningful.
+
+Plain English:
+
+The door had three locks, but only one key existed. We made the other two keys:
+one checks code hygiene, and one proves the shipping container can be built.
+
+Progress completed:
+
+- Added a pinned Ruff lint job named `lint`.
+- Added a Docker image job named `build`.
+- Kept the existing `Unit tests` job for deterministic workflow tests.
+- Aligned `pyproject.toml` dependencies with the deployed requirements.

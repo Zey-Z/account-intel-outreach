@@ -12,7 +12,6 @@ from account_intel.db import Database
 from account_intel.integrations.hubspot import HubSpotClient
 from account_intel.research_tools import build_research_client
 
-
 logger = logging.getLogger("account_intel.worker")
 
 

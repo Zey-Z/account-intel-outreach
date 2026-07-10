@@ -95,9 +95,10 @@ when you are ready to replace the offline fixture with live CrewAI and Tavily.
 ## Production Deployment
 
 The repo includes a production-readiness path for the demo deployment: GitHub
-Actions runs the offline unit test suite without secrets, the deploy workflow is
-gated by passing tests before it can call Render, and the database schema is
-versioned through `schema_migrations`. The API also includes structured
+Actions runs lint, offline unit tests, and a real Docker build without secrets.
+The `main` ruleset requires those three checks through a pull request, the deploy
+workflow is gated by another test run before it can call Render, and the database
+schema is versioned through `schema_migrations`. The API also includes structured
 `X-Request-Id` logs, demo-safe rate limiting, and a protected deep health check.
 
 See [docs/PRODUCTION_READINESS.md](docs/PRODUCTION_READINESS.md) for the honest
@@ -122,6 +123,7 @@ impact, or automated email sending.
 Additional truthful engineering claims after the current setup:
 
 - Automated tests gate CI and the Render deploy workflow through GitHub Actions.
+- Pull requests must pass Ruff lint, unit tests, and a Docker image build.
 - Database schema changes are versioned through migrations.
 - API requests include structured request logs and `X-Request-Id` tracing.
 - The public write/worker endpoints include single-instance demo rate limiting.

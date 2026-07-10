@@ -5,7 +5,6 @@ from dataclasses import replace
 from account_intel.grounding import significant_tokens
 from account_intel.models import OutreachDraft, SourceEvidence
 
-
 _GENERIC_OUTREACH_WORDS = {
     "able",
     "account",

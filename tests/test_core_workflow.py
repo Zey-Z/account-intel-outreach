@@ -1,5 +1,5 @@
-import tempfile
 import sys
+import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager

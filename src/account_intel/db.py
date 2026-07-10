@@ -8,7 +8,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterator, Protocol
 
-
 VALID_STATUSES = {
     "queued",
     "researching",
