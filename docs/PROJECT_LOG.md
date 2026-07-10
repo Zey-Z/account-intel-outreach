@@ -1050,3 +1050,36 @@ Progress completed:
 - Verified the consolidated dashboard CSV returned 15 run rows.
 - Exported the official secret-free snapshot, refreshed the PBIX, and saved the
   updated dashboard artifact.
+
+## 2026-07-10 - Turn the Repository into a Product Story
+
+Decision:
+
+Replace the implementation checklist in the root README with an external-facing
+project narrative organized around the business problem, user flow, verified
+result, architecture, local quickstart, and evidence.
+
+Why:
+
+The system was complete, but the old landing page still read like a classroom
+construction log. A first-time reviewer should be able to understand the value,
+control model, and proof of execution without reconstructing the project from a
+long feature list. Internal resume-claim guidance also does not belong in the
+public product introduction.
+
+Plain English:
+
+The workshop was finished, but the front window still displayed the building
+instructions. The new README puts the finished product in the window and keeps
+the engineering records available behind it.
+
+Progress completed:
+
+- Rebuilt the README around the business problem and end-to-end user flow.
+- Added a GitHub-rendered architecture diagram, status badges, verified results,
+  technology responsibilities, API guide, repository map, and document index.
+- Replaced the hard-coded local path with a portable zero-key quickstart.
+- Removed the public `Claim Boundaries` section and expressed human approval as
+  a product design feature instead.
+- Updated the final release evidence to pull request `#2`, commit `818d052`, CI
+  run `#18`, deploy run `#10`, and the refreshed Power BI percentage display.

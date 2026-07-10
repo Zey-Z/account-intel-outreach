@@ -43,13 +43,20 @@
 ## External Verification Completed
 
 - Protected pull request `#1` passed all required checks and was squash-merged.
-- Render deployed commit `164108d6` through the test-gated deploy workflow.
+- Protected pull request `#2` refreshed the deployment record and Power BI
+  artifact after all six checks passed.
+- Render deployed final commit `818d052` through the test-gated deploy workflow.
+- The live service reported CrewAI, Tavily, and Neon PostgreSQL at the same
+  final commit.
 - Migration `0004` exposed `dashboard_runs_view` with 15 run rows.
 - Startup reconciliation repaired the live approved run to `synced_to_crm`.
 - The saved PBIX was refreshed from the deployed secret-free CSV snapshot.
+- The final dashboard displays the grounding rate as a readable percentage.
 
-## Why This Is Still Useful
+## Current Project State
 
-The hardest architecture decisions are already represented in code: state,
-schema, validation, lifecycle, review decisions, and reporting views. External
-tools can now be connected one by one without changing the core workflow.
+The end-to-end portfolio deployment is complete: intake, agent execution,
+evidence validation, persistent state, Slack review, approved HubSpot sync,
+Power BI reporting, CI, and test-gated deployment have all been exercised. New
+work should be treated as product expansion or operating-scale improvement, not
+as completion of the core workflow.
