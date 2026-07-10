@@ -214,15 +214,15 @@ def page_two(c: canvas.Canvas):
         11.7,
     )
 
-    section_title(c, "Delivery model", 42, 205)
+    section_title(c, "Operating model", 42, 205)
     decision_card(
         c,
         42,
         110,
         (PAGE_W - 96) / 2,
         88,
-        "AI-assisted implementation",
-        "AI coding agents produced the architecture and code. The owner configured Zapier, Render, Neon, Slack, and HubSpot; ran live workflows; reported failures; completed human approvals; and verified releases.",
+        "Human approval is a system rule",
+        "Slack controls the business decision. Only approved drafts become HubSpot Notes; rejected or uncertain work stays outside the CRM and remains visible in the event history.",
         BLUE,
     )
     decision_card(
