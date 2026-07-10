@@ -988,3 +988,31 @@ Progress completed:
   API key in the generated files.
 - Added a manifest with refresh time, source, row count, and data classification.
 - Added tests for successful export and schema drift rejection.
+
+## 2026-07-09 - Build the Power BI Control Tower
+
+Decision:
+
+Ship a one-page PBIX artifact built from the secret-free dashboard snapshot,
+with a small set of management-facing KPIs and two diagnostic charts.
+
+Why:
+
+SQL views prove that the data exists, but a business stakeholder should not need
+to write a query to understand workflow volume, quality, delay, or review load.
+The dashboard also needs to remain safe to publish in a portfolio repository.
+
+Plain English:
+
+The database is the warehouse. Power BI is the control-room window: it shows
+what is moving, what is stuck, and where a person should look next, without
+handing every visitor the warehouse keys.
+
+Progress completed:
+
+- Created `powerbi/AI_Account_Intelligence_Dashboard.pbix` in Power BI Desktop.
+- Added six KPIs: total runs, average fit score, grounding rate, average latency,
+  failure events, and human-review volume.
+- Added run-count-by-status and average-fit-score-by-status charts.
+- Kept credentials outside the PBIX through generated CSV snapshots.
+- Verified the latest branch CI passed lint, 82 unit tests, and Docker build.

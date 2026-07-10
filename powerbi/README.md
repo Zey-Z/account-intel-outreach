@@ -3,6 +3,10 @@
 The dashboard uses a local, reviewable snapshot of the protected reporting API.
 No API key or database password is stored inside the `.pbix` file.
 
+Open `AI_Account_Intelligence_Dashboard.pbix` in Power BI Desktop to view the
+workflow control tower. Its first page shows the executive KPIs, run volume by
+status, and average fit score by status.
+
 ## Refresh the snapshot
 
 Run:

@@ -35,14 +35,17 @@
 - Optional Docker containerization path.
 - Production readiness documentation with known limitations.
 - BI-ready SQL views.
+- Power BI Desktop dashboard with workflow KPIs and status/quality charts.
 - Human-readable run report script.
 - Integration boundary tests for Slack signature verification and HubSpot note
   payload generation.
 
-## Remaining Portfolio Artifact
+## Remaining External Verification
 
-- Power BI `.pbix` dashboard file. The four protected CSV endpoints and SQL
-  views it will read are already implemented.
+- Merge the protected pull request and verify migration `0004` plus the
+  `dashboard_runs_view` CSV endpoint on Render.
+- Refresh the saved PBIX from the deployed endpoint after that migration is
+  live.
 
 ## Why This Is Still Useful
 

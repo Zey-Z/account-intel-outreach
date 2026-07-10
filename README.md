@@ -82,10 +82,13 @@ Implemented:
 - Structured request logging with `X-Request-Id` tracing.
 - Single-instance in-memory rate limiting for demo/API protection.
 - API-key-protected deep health check for database reachability.
+- Power BI Desktop dashboard with six workflow KPIs, run-status distribution,
+  and average fit score by status.
 
-Optional portfolio finish:
+Dashboard artifact:
 
-- Build Power BI dashboard from the database views.
+- [`powerbi/AI_Account_Intelligence_Dashboard.pbix`](powerbi/AI_Account_Intelligence_Dashboard.pbix)
+- Refresh contract and instructions: [`powerbi/README.md`](powerbi/README.md)
 
 Start with [docs/CLASSROOM_WALKTHROUGH.md](docs/CLASSROOM_WALKTHROUGH.md) if
 you are learning the system from scratch. Use
@@ -129,3 +132,5 @@ Additional truthful engineering claims after the current setup:
 - The public write/worker endpoints include single-instance demo rate limiting.
 - Database-backed worker claiming prevents duplicate pickup of the same queued
   run.
+- A versioned dashboard view and schema-validating export keep the Power BI
+  report refreshable without embedding database or API credentials in PBIX.

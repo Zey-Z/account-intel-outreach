@@ -12,7 +12,10 @@ Repository: `Zey-Z/account-intel-outreach`
 
 ## Automated Quality Gates
 
-- The complete offline test suite passed: 77 tests.
+- The complete offline test suite passed: 82 tests on branch
+  `codex/production-completion`.
+- Ruff lint, unit tests, and a real Docker image build all passed for commit
+  `05bae62`.
 - GitHub Actions CI completed successfully for commit `c9a1f8b`.
 - The Render deploy job ran only after the test gate passed.
 - GitHub Actions run evidence:
@@ -44,15 +47,26 @@ Observed result:
 - The run reached `sent_to_review` with zero retries.
 - Slack accepted the review message.
 
-The system did not send an email. A human must still approve, reject, or request
-changes. This is an intentional business control, not an unfinished automation.
+The system did not send an email. A human approved the draft in Slack. The
+approval buttons were replaced with a recorded decision, proving the review
+round trip while preserving the no-auto-send control.
 
-## CRM Verification Boundary
+## CRM Verification
 
-The HubSpot integration now searches for or creates a Company and creates an
-approved Note associated with that Company. Unit tests verify the exact HubSpot
-payload, including the default Note-to-Company association. The new live smoke
-test still requires a human Slack approval before its CRM filing can be observed.
+- The Slack approval created a HubSpot Note associated with Oscar Health.
+- HubSpot returned object ID `382074375877`.
+- The run event log recorded `crm_synced` and the Slack message update succeeded.
+- The deployed run summary still reports `sent_to_review`; the startup
+  reconciliation fix is complete on the protected branch and awaits merge and
+  deployment verification.
+
+## Power BI Artifact
+
+- Created `powerbi/AI_Account_Intelligence_Dashboard.pbix` in Power BI Desktop.
+- The first page contains six workflow KPIs, run count by status, and average
+  fit score by status.
+- The PBIX reads local CSV snapshots so it contains no Neon password or API key.
+- A schema-validating exporter and manifest define the repeatable refresh path.
 
 ## Container Verification
 
@@ -65,7 +79,6 @@ test still requires a human Slack approval before its CRM filing can be observed
 
 - Render's free/demo hosting and single-process in-memory rate limiter are not an
   enterprise high-availability setup.
-- A real Power BI `.pbix` artifact has not yet been created; the SQL views and
-  protected CSV feeds are ready for it.
+- Render still needs the protected-branch merge before the run-status repair and
+  consolidated dashboard endpoint can be verified live.
 - The metrics above are test-context results from a portfolio deployment.
-
