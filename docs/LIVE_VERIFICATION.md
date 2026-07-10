@@ -80,6 +80,23 @@ round trip while preserving the no-auto-send control.
 - Its `/health` endpoint returned HTTP 200.
 - Docker reported the container as `healthy` using the built-in health check.
 
+## Final Release Sync
+
+Date: 2026-07-10
+
+- Pull request `#2` was squash-merged as final commit `818d052`.
+- All six PR checks passed before merge.
+- Main-branch CI run `#18` completed successfully:
+  `https://github.com/Zey-Z/account-intel-outreach/actions/runs/29070988596`.
+- Test-gated deploy run `#10` completed successfully:
+  `https://github.com/Zey-Z/account-intel-outreach/actions/runs/29070988586`.
+- The live `/runtime/status` endpoint reported commit
+  `818d052ad303de6e2a23d1ae1fe1dd1cc8971301`, CrewAI, and Tavily.
+- The protected deep-health endpoint returned HTTP 200 against PostgreSQL with
+  24.088 ms observed database latency.
+- The Power BI artifact was refreshed from 15 deployed run rows and now shows
+  the grounding rate as `100%` rather than the raw decimal `1.00`.
+
 ## Honest Remaining Boundary
 
 - Render's free/demo hosting and single-process in-memory rate limiter are not an
