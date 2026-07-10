@@ -40,12 +40,13 @@
 - Integration boundary tests for Slack signature verification and HubSpot note
   payload generation.
 
-## Remaining External Verification
+## External Verification Completed
 
-- Merge the protected pull request and verify migration `0004` plus the
-  `dashboard_runs_view` CSV endpoint on Render.
-- Refresh the saved PBIX from the deployed endpoint after that migration is
-  live.
+- Protected pull request `#1` passed all required checks and was squash-merged.
+- Render deployed commit `164108d6` through the test-gated deploy workflow.
+- Migration `0004` exposed `dashboard_runs_view` with 15 run rows.
+- Startup reconciliation repaired the live approved run to `synced_to_crm`.
+- The saved PBIX was refreshed from the deployed secret-free CSV snapshot.
 
 ## Why This Is Still Useful
 

@@ -1016,3 +1016,37 @@ Progress completed:
 - Added run-count-by-status and average-fit-score-by-status charts.
 - Kept credentials outside the PBIX through generated CSV snapshots.
 - Verified the latest branch CI passed lint, 82 unit tests, and Docker build.
+
+## 2026-07-09 - Verify the Protected Release End to End
+
+Decision:
+
+Treat the project as complete only after the protected merge, deployment,
+database migration, stale-state repair, and dashboard refresh were each observed
+in their real environment.
+
+Why:
+
+Passing local tests proves the parts work in isolation. The portfolio claim is
+stronger only when GitHub rules enforce those tests, Render runs the merged
+commit, Neon applies the migration, and the business-facing output reflects the
+same live data.
+
+Plain English:
+
+We did not stop after inspecting the car in the garage. We drove it through the
+toll gate, checked the dashboard on the road, and confirmed the delivery receipt
+at the destination.
+
+Progress completed:
+
+- Created and squash-merged protected pull request `#1` after all six check
+  records passed.
+- Verified CI and the test-gated Render deploy for commit `164108d6`.
+- Confirmed the live service reported CrewAI, Tavily, and the merged commit.
+- Confirmed protected deep health returned HTTP 200 against Neon PostgreSQL.
+- Verified startup reconciliation changed the stale Oscar Health run to
+  `synced_to_crm` and recorded `run_status_reconciled`.
+- Verified the consolidated dashboard CSV returned 15 run rows.
+- Exported the official secret-free snapshot, refreshed the PBIX, and saved the
+  updated dashboard artifact.

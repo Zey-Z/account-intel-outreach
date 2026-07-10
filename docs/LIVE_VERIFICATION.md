@@ -12,23 +12,26 @@ Repository: `Zey-Z/account-intel-outreach`
 
 ## Automated Quality Gates
 
-- The complete offline test suite passed: 82 tests on branch
-  `codex/production-completion`.
-- Ruff lint, unit tests, and a real Docker image build all passed for commit
-  `05bae62`.
-- GitHub Actions CI completed successfully for commit `c9a1f8b`.
+- The complete offline test suite passed: 82 tests.
+- The protected pull request required Ruff lint, unit tests, and a real Docker
+  image build. All six push/PR check records passed before merge.
+- Pull request `#1` was squash-merged as commit `164108d6`.
 - The Render deploy job ran only after the test gate passed.
 - GitHub Actions run evidence:
-  - CI: `https://github.com/Zey-Z/account-intel-outreach/actions/runs/29048704581`
-  - Test-gated deploy: `https://github.com/Zey-Z/account-intel-outreach/actions/runs/29048704699`
+  - CI: `https://github.com/Zey-Z/account-intel-outreach/actions/runs/29069363447`
+  - Test-gated deploy: `https://github.com/Zey-Z/account-intel-outreach/actions/runs/29069363508`
+  - Pull request: `https://github.com/Zey-Z/account-intel-outreach/pull/1`
 
 ## Live Service Checks
 
 - `GET /health` returned HTTP 200.
 - Protected `GET /health/deep` returned HTTP 200 and confirmed PostgreSQL
-  connectivity.
+  connectivity with 20.331 ms database latency during verification.
 - Protected `GET /runtime/status` reported `crewai` agent runtime and `tavily`
-  research mode at deployed commit `c9a1f8b`.
+  research mode at deployed commit `164108d6`.
+- The deep-health response included `X-Request-Id`
+  `60ac3f42-aa04-48ac-902c-1893a5833407`, proving request tracing reached the
+  live service.
 - Invalid ICP input returned HTTP 400 instead of creating a stuck worker run.
 
 ## Real Workflow Smoke Test
@@ -56,9 +59,9 @@ round trip while preserving the no-auto-send control.
 - The Slack approval created a HubSpot Note associated with Oscar Health.
 - HubSpot returned object ID `382074375877`.
 - The run event log recorded `crm_synced` and the Slack message update succeeded.
-- The deployed run summary still reports `sent_to_review`; the startup
-  reconciliation fix is complete on the protected branch and awaits merge and
-  deployment verification.
+- After deployment, startup reconciliation repaired the stale run summary from
+  `sent_to_review` to `synced_to_crm`, set `finished_at`, and recorded one
+  `run_status_reconciled` event.
 
 ## Power BI Artifact
 
@@ -67,6 +70,8 @@ round trip while preserving the no-auto-send control.
   fit score by status.
 - The PBIX reads local CSV snapshots so it contains no Neon password or API key.
 - A schema-validating exporter and manifest define the repeatable refresh path.
+- The deployed `dashboard_runs_view` endpoint returned HTTP 200 with 15 run
+  rows, and the saved PBIX was refreshed from that official snapshot.
 
 ## Container Verification
 
@@ -79,6 +84,4 @@ round trip while preserving the no-auto-send control.
 
 - Render's free/demo hosting and single-process in-memory rate limiter are not an
   enterprise high-availability setup.
-- Render still needs the protected-branch merge before the run-status repair and
-  consolidated dashboard endpoint can be verified live.
 - The metrics above are test-context results from a portfolio deployment.
