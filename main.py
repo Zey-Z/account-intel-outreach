@@ -39,6 +39,7 @@ REPORT_VIEW_WHITELIST = {
     "outreach_performance_view",
     "agent_quality_view",
     "cost_latency_view",
+    "dashboard_runs_view",
 }
 
 logging.basicConfig(level=getattr(logging, LOG_LEVEL, logging.INFO), format="%(message)s")
@@ -514,6 +515,28 @@ def _empty_report_headers(view_name: str) -> list[str]:
         "cost_latency_view": [
             "run_id",
             "icp_profile",
+            "event_count",
+            "token_estimate",
+            "average_latency_ms",
+            "failure_event_count",
+        ],
+        "dashboard_runs_view": [
+            "run_id",
+            "triggered_by",
+            "started_at",
+            "finished_at",
+            "icp_profile",
+            "status",
+            "company_count",
+            "retry_count",
+            "average_fit_score",
+            "grounding_rate",
+            "finding_count",
+            "grounded_finding_count",
+            "average_analysis_confidence",
+            "average_draft_confidence",
+            "ready_for_review_count",
+            "needs_human_review_count",
             "event_count",
             "token_estimate",
             "average_latency_ms",

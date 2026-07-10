@@ -184,7 +184,12 @@ class CoreWorkflowTests(unittest.TestCase):
 
         self.assertEqual(
             [row["id"] for row in rows],
-            ["0001_init.sql", "0002_query_indexes.sql", "0003_fix_bi_view_fanout.sql"],
+            [
+                "0001_init.sql",
+                "0002_query_indexes.sql",
+                "0003_fix_bi_view_fanout.sql",
+                "0004_dashboard_runs_view.sql",
+            ],
         )
 
     def test_database_migrations_apply_incrementally_in_filename_order(self):

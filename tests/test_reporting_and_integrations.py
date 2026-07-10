@@ -28,6 +28,15 @@ class ReportingAndIntegrationTests(unittest.TestCase):
             self.assertIn("outreach_performance_view", view_names)
             self.assertIn("agent_quality_view", view_names)
             self.assertIn("cost_latency_view", view_names)
+            self.assertIn("dashboard_runs_view", view_names)
+
+            with db.connect() as conn:
+                columns = conn.execute("PRAGMA table_info(dashboard_runs_view)").fetchall()
+            column_names = {column["name"] for column in columns}
+            self.assertIn("started_at", column_names)
+            self.assertIn("average_fit_score", column_names)
+            self.assertIn("needs_human_review_count", column_names)
+            self.assertIn("average_latency_ms", column_names)
 
     def test_power_bi_views_do_not_weight_company_metrics_by_finding_count(self):
         from account_intel.db import Database, now_iso

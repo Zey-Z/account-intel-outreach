@@ -936,3 +936,55 @@ Progress completed:
 - Added a Docker image job named `build`.
 - Kept the existing `Unit tests` job for deterministic workflow tests.
 - Aligned `pyproject.toml` dependencies with the deployed requirements.
+
+## 2026-07-09 - Add a Dashboard Consumption View
+
+Decision:
+
+Expose one run-level `dashboard_runs_view` for Power BI while retaining the four
+specialized BI views.
+
+Why:
+
+The existing views intentionally separate workflow, quality, review, and cost
+concerns. Asking a first Power BI report to reproduce those joins would add
+unnecessary modeling risk and could reintroduce duplicated metrics.
+
+Plain English:
+
+The database keeps separate kitchen stations, while the dashboard receives one
+finished plate with exactly one row per workflow run.
+
+Progress completed:
+
+- Added versioned migration `0004_dashboard_runs_view.sql`.
+- Included timing, status, score, evidence, review, token, latency, and failure
+  fields in one run-level view.
+- Exposed the view through the protected CSV reporting endpoint.
+- Added schema and API tests for the Power BI contract.
+
+## 2026-07-09 - Add a Secret-Free Power BI Snapshot
+
+Decision:
+
+Refresh Power BI through a local CSV snapshot generated from protected report
+endpoints instead of storing the Neon password or API key inside the PBIX file.
+
+Why:
+
+The dashboard still needs real deployed data, but portfolio artifacts are public
+and portable. Embedding production credentials in the report would turn a useful
+demo into a secret-distribution problem.
+
+Plain English:
+
+Power BI receives a sealed photocopy of the reporting tables, not the key to the
+database filing cabinet.
+
+Progress completed:
+
+- Added a schema-validating Power BI export module and CLI.
+- Exported the run-level and outreach-performance datasets without storing the
+  API key in the generated files.
+- Added a manifest with refresh time, source, row count, and data classification.
+- Added tests for successful export and schema drift rejection.
