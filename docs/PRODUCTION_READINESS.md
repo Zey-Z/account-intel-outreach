@@ -8,6 +8,23 @@ enterprise production rollout. It has test gates, deploy gates, migrations,
 request tracing, rate limiting, and health checks. It still runs on lightweight
 demo infrastructure and should be described honestly.
 
+## Readiness Summary
+
+| Area | Implemented control | Current operating boundary |
+|---|---|---|
+| Release quality | Ruff, 82 unit tests, and Docker build on protected PRs. | Tests use offline deterministic mode; live-provider behavior is smoke-tested separately. |
+| Deployment | Render deploy hook runs after the GitHub test gate. | Render free/demo hosting can cold start and does not provide high availability. |
+| Data | Versioned migrations and Neon PostgreSQL system of record. | Backup, restore drill, and retention policy are not automated in this portfolio environment. |
+| Work execution | Atomic database claim, bounded retries, and company-level failure isolation. | The poller is in-process, not a supervised durable queue service. |
+| Observability | JSON request logs, request IDs, event history, and deep health. | No centralized alerting or distributed tracing backend. |
+| Traffic control | API key protection, Slack signature verification, and rate limiting. | The limiter is per-process and there is no WAF/CDN layer. |
+| Human governance | Slack approval before approved-only HubSpot sync. | Reviewer roles and escalation policies are demonstration-scale. |
+| Reporting | Protected, schema-validated CSV export to Power BI. | Snapshot refresh is owner-operated rather than scheduled. |
+
+This table is the practical meaning of production readiness: not a yes/no
+label, but a list of failure risks, implemented controls, and remaining
+operating responsibilities.
+
 ## CI/CD Pipeline
 
 GitHub Actions runs the offline unit test suite on every push and pull request.
@@ -123,3 +140,21 @@ master key to the box, and the box checks that the app is still awake.
 - The system drafts outreach for human review. It does not auto-send emails.
 - This project should not be described as HIPAA compliant, clinically validated,
   or enterprise production rolled out.
+
+## Path to an Enterprise Operating Model
+
+If this workflow moved beyond a portfolio deployment, the next engineering work
+would be operational rather than another agent prompt:
+
+1. Replace the in-process poller with a supervised durable queue and separate
+   worker service.
+2. Move rate-limit state to Redis or another shared store.
+3. Add centralized metrics, alerts, and a request/event tracing backend.
+4. Define backup, restore, retention, and incident-response procedures.
+5. Add role-based reviewer authorization and CRM sandbox-to-production release
+   controls.
+6. Schedule the reporting refresh and monitor schema-contract failures.
+
+These are scale and operations improvements. They do not change the core
+product rule: AI prepares evidence and a draft; a person approves the business
+action.

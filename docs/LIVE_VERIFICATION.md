@@ -10,6 +10,19 @@ Environment: Render web service + Neon PostgreSQL
 Runtime: CrewAI agents + Tavily research  
 Repository: `Zey-Z/account-intel-outreach`
 
+## What This Record Proves
+
+This is a traceable portfolio deployment record. It combines four different
+types of evidence instead of treating one successful screenshot as proof of the
+whole system:
+
+| Evidence type | What was checked |
+|---|---|
+| Automated | Ruff, 82 unit tests, and Docker image build. |
+| Service | Public health, protected deep health, runtime mode, and request tracing. |
+| Business flow | Research, fit scoring, drafting, Slack approval, and HubSpot filing. |
+| Reporting | Protected CSV contract, 15-run snapshot, and refreshed Power BI artifact. |
+
 ## Automated Quality Gates
 
 - The complete offline test suite passed: 82 tests.
@@ -97,7 +110,20 @@ Date: 2026-07-10
 - The Power BI artifact was refreshed from 15 deployed run rows and now shows
   the grounding rate as `100%` rather than the raw decimal `1.00`.
 
-## Honest Remaining Boundary
+## Documentation Release Baseline
+
+Date: 2026-07-10
+
+- Pull request `#3` presented the completed system as an external-facing product
+  story and was merged as commit `799894c`.
+- All six pull-request checks passed before merge.
+- The repository landing page now links directly to this verification record,
+  the production-readiness explanation, the dashboard guide, and the updated
+  learning walkthrough.
+- This documentation change did not alter the verified workflow behavior
+  recorded above.
+
+## Remaining Operating Boundary
 
 - Render's free/demo hosting and single-process in-memory rate limiter are not an
   enterprise high-availability setup.

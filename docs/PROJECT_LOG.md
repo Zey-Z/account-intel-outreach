@@ -9,7 +9,8 @@ The project is an AI account research workflow.
 Simple flow:
 
 ```text
-Zapier Table -> FastAPI -> PostgreSQL run record -> Worker -> Research / Analysis / Draft -> Status writeback
+Zapier or API -> FastAPI -> PostgreSQL queue -> Worker -> CrewAI + Tavily
+  -> validation harness -> Slack review -> approved HubSpot Note -> Power BI
 ```
 
 What this means:
@@ -18,8 +19,17 @@ What this means:
 - FastAPI is the public door. It receives the request and creates a run.
 - PostgreSQL is the memory. It stores run state, companies, findings, drafts, and events.
 - The worker does the longer processing work.
-- The AI layer prepares research, scoring, and outreach draft data.
-- Humans still approve important outputs later through Slack.
+- CrewAI separates Researcher, Analyst, and Writer reasoning roles.
+- Tavily supplies current public evidence; offline fixtures remain for repeatable tests.
+- The validation harness, not the agents, owns status, evidence checks, retries, and database writes.
+- Slack is the human decision gate; only approved work reaches HubSpot.
+- Power BI reports workflow, quality, review, failure, and latency signals.
+
+Current verified baseline (2026-07-10): 82 unit tests, Ruff, Docker build,
+CrewAI + Tavily on Render, Neon PostgreSQL, Slack approval, HubSpot Note sync,
+and a 15-run Power BI snapshot. Older entries below are intentionally preserved
+as history; their "current limitation" sections describe the project at that
+date, not the completed system today.
 
 ## Important Design Rules
 
@@ -1083,3 +1093,36 @@ Progress completed:
   a product design feature instead.
 - Updated the final release evidence to pull request `#2`, commit `818d052`, CI
   run `#18`, deploy run `#10`, and the refreshed Power BI percentage display.
+
+## 2026-07-10 - Refresh the Public Documentation Set
+
+Decision:
+
+Treat the Executive Brief, Project Story, Live Verification, Production
+Readiness, Power BI guide, Classroom Walkthrough, and Project Log as one
+versioned evidence package.
+
+Why:
+
+Several learning and PDF documents still described the May teaching scaffold:
+offline fixtures, 22 tests, and integrations listed as future work. The code and
+deployment had since completed those stages. A reviewer following the README
+could therefore encounter mutually inconsistent versions of the same project.
+
+Plain English:
+
+The finished building had a new front sign, but several rooms still contained
+old construction maps. This update replaces the maps while preserving the
+dated construction diary.
+
+Progress completed:
+
+- Rewrote the Classroom Walkthrough around the completed dual-mode system.
+- Expanded the Power BI guide with its reporting contract and verification
+  checklist.
+- Added a readiness matrix and enterprise operating path.
+- Added a concise proof model and documentation baseline to Live Verification.
+- Regenerated the one-page Executive Brief and two-page Project Story from
+  maintainable scripts.
+- Kept historical log entries append-only and added a current-state warning at
+  the top.

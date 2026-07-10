@@ -184,13 +184,13 @@ docs/                project story, deployment evidence, and learning notes
 
 | Document | Best for |
 |---|---|
-| [Executive brief](docs/AI_Account_Intelligence_Brief.pdf) | A two-minute business overview. |
-| [Project story](docs/AI_Account_Intelligence_Project_Story.pdf) | The problem, decisions, architecture, and roadmap. |
+| [Executive brief](docs/AI_Account_Intelligence_Brief.pdf) | A one-page business case and verified outcome. |
+| [Project story](docs/AI_Account_Intelligence_Project_Story.pdf) | A two-page narrative of the problem, design decisions, delivery, and result. |
 | [Live verification](docs/LIVE_VERIFICATION.md) | Evidence that the deployed workflow was exercised. |
 | [Production readiness](docs/PRODUCTION_READINESS.md) | CI/CD, migrations, health checks, logging, rate limits, and operating model. |
-| [Power BI guide](powerbi/README.md) | Dashboard refresh contract and data model. |
-| [Classroom walkthrough](docs/CLASSROOM_WALKTHROUGH.md) | A beginner-friendly explanation of the codebase. |
-| [Project log](docs/PROJECT_LOG.md) | The chronological engineering decision record. |
+| [Power BI guide](powerbi/README.md) | Dashboard purpose, refresh contract, data model, and verification checklist. |
+| [Classroom walkthrough](docs/CLASSROOM_WALKTHROUGH.md) | A beginner-friendly tour of the completed system and why each layer exists. |
+| [Project log](docs/PROJECT_LOG.md) | The append-only engineering decision record; read the current snapshot first. |
 
 ---
 
